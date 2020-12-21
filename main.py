@@ -38,7 +38,7 @@ def ler_labirinto(imagem):
     return l
 
 
-def mover_jogador(keys, player_coord, player_size, labirinto, camara_y , dt):
+def mover_jogador(keys, player_coord, player_size, labirinto, camara_y, dt):
     player_x, player_y = player_coord
     player_w, player_h = player_size
 
@@ -58,19 +58,20 @@ def mover_jogador(keys, player_coord, player_size, labirinto, camara_y , dt):
     for linha in labirinto:
         for x, i in enumerate(linha):
             if i == '1':
-                rect = pygame.Rect(x * SQ_SIZE, y - camara_y, SQ_SIZE, SQ_SIZE)
+                rect_1 = pygame.Rect(x * SQ_SIZE, y - camara_y, SQ_SIZE, SQ_SIZE)
+                rect_2 = pygame.Rect((2 * len(linha) - x - 1) * SQ_SIZE, y - camara_y, SQ_SIZE, SQ_SIZE) # Posicao simetrica
 
                 # Quando fica no chao ele andava mais lento se fizer isto isso já nao acontece
                 player_rect = pygame.Rect(player_x + add_x, player_y + 1, player_w, player_h)
 
-                if player_rect.colliderect(rect):
+                if player_rect.colliderect(rect_1) or player_rect.colliderect(rect_2):
                     player_rect = pygame.Rect(player_x + add_x, player_y - 1, player_w, player_h)
 
-                    if player_rect.colliderect(rect):
+                    if player_rect.colliderect(rect_1) or player_rect.colliderect(rect_2):
                         add_x = 0
 
                 player_rect = pygame.Rect(player_x, player_y + add_y, player_w, player_h)
-                if player_rect.colliderect(rect):
+                if player_rect.colliderect(rect_1) or player_rect.colliderect(rect_2):
                     add_y = 0
 
         y += SQ_SIZE
@@ -120,8 +121,8 @@ def main():
             player_y = SCREEN_HEIGHT - player.get_height()
 
         dt = clock.tick()  # tempo que passou desde a ultima chamada
-        camara_y += dt * velocidade_y  # mover camara
-        player_y -= dt * velocidade_y  # mover jogador
+        camara_y += dt * velocidade_y  # mover camara em funcao do tempo
+        player_y -= dt * velocidade_y  # mover jogador em funcao do tempo
 
         keys = pygame.key.get_pressed()
 
@@ -134,7 +135,10 @@ def main():
         for linha in labirinto:
             for x, i in enumerate(linha):
                 if i == '1':
+                    # Desenha o quadrado na posicao x, y
                     pygame.draw.rect(screen, LARANJA, (x * SQ_SIZE, y - camara_y, SQ_SIZE, SQ_SIZE))
+
+                    # Desenha o quadrado na posicao simetrica
                     pygame.draw.rect(screen, LARANJA, ((2 * len(linha) - x - 1) * SQ_SIZE, y - camara_y, SQ_SIZE, SQ_SIZE))
 
             y += SQ_SIZE
