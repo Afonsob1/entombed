@@ -38,6 +38,48 @@ def ler_labirinto(imagem):
     return l
 
 
+def mover_jogador(keys, player_coord, player_size, labirinto, camara_y , dt):
+    player_x, player_y = player_coord
+    player_w, player_h = player_size
+
+    add_x = 0
+    add_y = 0
+
+    if keys[pygame.K_LEFT]:
+        add_x -= dt * PLAYER_VELOCITY
+    if keys[pygame.K_RIGHT]:
+        add_x += dt * PLAYER_VELOCITY
+    if keys[pygame.K_UP]:
+        add_y -= dt * PLAYER_VELOCITY
+    if keys[pygame.K_DOWN]:
+        add_y += dt * PLAYER_VELOCITY
+
+    y = 0  # y da linha
+    for linha in labirinto:
+        for x, i in enumerate(linha):
+            if i == '1':
+                rect = pygame.Rect(x * SQ_SIZE, y - camara_y, SQ_SIZE, SQ_SIZE)
+
+                # Quando fica no chao ele andava mais lento se fizer isto isso já nao acontece
+                player_rect = pygame.Rect(player_x + add_x, player_y + 1, player_w, player_h)
+
+                if player_rect.colliderect(rect):
+                    player_rect = pygame.Rect(player_x + add_x, player_y - 1, player_w, player_h)
+
+                    if player_rect.colliderect(rect):
+                        add_x = 0
+
+                player_rect = pygame.Rect(player_x, player_y + add_y, player_w, player_h)
+                if player_rect.colliderect(rect):
+                    add_y = 0
+
+        y += SQ_SIZE
+
+    player_x += add_x
+    player_y += add_y
+    return player_x, player_y
+
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -77,44 +119,13 @@ def main():
         elif player_y > SCREEN_HEIGHT - player.get_height():
             player_y = SCREEN_HEIGHT - player.get_height()
 
-        add_x = 0
-        add_y = 0
-
         dt = clock.tick()  # tempo que passou desde a ultima chamada
         camara_y += dt * velocidade_y  # mover camara
         player_y -= dt * velocidade_y  # mover jogador
 
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT]:
-            add_x -= dt * PLAYER_VELOCITY
-        if keys[pygame.K_RIGHT]:
-            add_x += dt * PLAYER_VELOCITY
-        if keys[pygame.K_UP]:
-            add_y -= dt * PLAYER_VELOCITY
-        if keys[pygame.K_DOWN]:
-            add_y += dt * PLAYER_VELOCITY
 
-        y = 0  # y da linha
-        for linha in labirinto:
-            for x, i in enumerate(linha):
-                if i == '1':
-                    rect = pygame.Rect(x * SQ_SIZE, y - camara_y, SQ_SIZE, SQ_SIZE)
-
-                    # Quando fica no chao ele andava mais lento se fizer isto isso já nao acontece
-                    player_rect = pygame.Rect(player_x + add_x, player_y+1, player_w, player_h)
-                    if player_rect.colliderect(rect):
-                        player_rect = pygame.Rect(player_x + add_x, player_y-1, player_w, player_h)
-                        if player_rect.colliderect(rect):
-                            add_x = 0
-
-                    player_rect = pygame.Rect(player_x, player_y + add_y, player_w, player_h)
-                    if player_rect.colliderect(rect):
-                        add_y = 0
-
-            y += SQ_SIZE
-
-        player_x += add_x
-        player_y += add_y
+        player_x, player_y = mover_jogador(keys, (player_x, player_y), (player_w, player_h), labirinto, camara_y, dt)
 
         ############## rendering ##############
 
