@@ -27,7 +27,6 @@ BLACK = (0, 0, 0, 0)
 VIOLETA = (155, 155, 255)
 LARANJA = 0xff8c15
 
-
 # AINDA NAO SEI SE VOU LER O LABIRINTO POR UMA IMAGEM OU SE CRIO UM FCHEIRO TXT A PARTE
 def ler_labirinto(imagem):
     im = Image.open(imagem, 'r')
@@ -44,13 +43,20 @@ def ler_labirinto(imagem):
     return l
 
 
+def colisao_jogador_parede(player_coord, player_size, parede_coord, quadrados_linha, camara_y):
+    rect_1 = pygame.Rect(parede_coord[0] * SQ_SIZE, parede_coord[1]*SQ_SIZE - camara_y, SQ_SIZE, SQ_SIZE)
+    rect_2 = pygame.Rect((quadrados_linha - parede_coord[0] - 1) * SQ_SIZE, parede_coord[1]*SQ_SIZE - camara_y, SQ_SIZE, SQ_SIZE)  # Posicao simetrica
+
+    player_rect = pygame.Rect(player_coord[0], player_coord[1], player_size[0], player_size[1])
+    return player_rect.colliderect(rect_1) or player_rect.colliderect(rect_2)
+
+
 def coord_player_to_labirinto(x, y, camara_y):
     return int(x // SQ_SIZE), int((y + camara_y) // SQ_SIZE)
 
 
 def mover_jogador(keys, player_coord, player_size, labirinto, camara_y, dt):
     player_x, player_y = player_coord
-    player_w, player_h = player_size
 
     add_x = 0
     add_y = 0
@@ -69,32 +75,22 @@ def mover_jogador(keys, player_coord, player_size, labirinto, camara_y, dt):
         add_y += dt * PLAYER_VELOCITY
         virado = BAIXO
 
-    y = 0  # y da linha
-    for linha in labirinto:
+    for y, linha in enumerate(labirinto):
         for x, i in enumerate(linha):
             if i == '1':
-                rect_1 = pygame.Rect(x * SQ_SIZE, y - camara_y, SQ_SIZE, SQ_SIZE)
-                rect_2 = pygame.Rect((2 * len(linha) - x - 1) * SQ_SIZE, y - camara_y, SQ_SIZE,
-                                     SQ_SIZE)  # Posicao simetrica
-
-                # Ve se o player ao andar "add_x" pixeis colide com alguma parede
+                # Ve se o player ao andar "add_x" pixeis colide com a parede
                 # se colidir nao poe "add_x" a 0, logo nao deixa andar nessa direcao
                 # Quando fica no chao ele andava mais lento se fizer isto isso já nao acontece
-                player_rect = pygame.Rect(player_x + add_x, player_y + 1, player_w, player_h)
+                if colisao_jogador_parede((player_x + add_x, player_y + 1), player_size, (x, y), 2*len(linha), camara_y):
 
-                if player_rect.colliderect(rect_1) or player_rect.colliderect(rect_2):
-                    player_rect = pygame.Rect(player_x + add_x, player_y - 1, player_w, player_h)
-
-                    if player_rect.colliderect(rect_1) or player_rect.colliderect(rect_2):
+                    if colisao_jogador_parede((player_x + add_x, player_y - 1), player_size, (x, y), 2*len(linha), camara_y):
                         add_x = 0
 
                 # Ve se o player ao andar "add_y" pixeis colide com alguma parede
                 # se colidir poe o "add_y" a 0 nao deixa andar nessa direcao
-                player_rect = pygame.Rect(player_x, player_y + add_y, player_w, player_h)
-                if player_rect.colliderect(rect_1) or player_rect.colliderect(rect_2):
+                if colisao_jogador_parede((player_x, player_y + add_y), player_size, (x, y), 2*len(linha), camara_y):
                     add_y = 0
 
-        y += SQ_SIZE
 
     player_x += add_x
     player_y += add_y
@@ -124,7 +120,9 @@ def mover_parede(player_coord, player_size, camara_y, virado, labirinto):
             if labirinto[y][x] == '1':
                 labirinto[y] = labirinto[y][:x] + '0' + labirinto[y][x + 1:]
             else:
-                labirinto[y] = labirinto[y][:x] + '1' + labirinto[y][x + 1:]
+                # Só adiciona parede se o jogador nao ficar preso nela
+                if not colisao_jogador_parede(player_coord, player_size, (x, y), 2*len(labirinto[0]), camara_y):
+                    labirinto[y] = labirinto[y][:x] + '1' + labirinto[y][x + 1:]
 
 
 def main():
@@ -166,17 +164,18 @@ def main():
         camara_y += dt * velocidade_y  # mover camara em funcao do tempo
         player_y -= dt * velocidade_y  # mover jogador em funcao do tempo
 
+        keys = pygame.key.get_pressed()
+
+        virado, player_x, player_y = mover_jogador(keys, (player_x, player_y), player_size, labirinto, camara_y, dt)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     mover_parede((player_x, player_y), player_size, camara_y, virado, labirinto)
-        keys = pygame.key.get_pressed()
 
-        virado, player_x, player_y = mover_jogador(keys, (player_x, player_y), player_size, labirinto, camara_y, dt)
-
-        ############## rendering ##############
+                    ############## rendering ##############
 
         # desenhar labirinto
         y = 0  # y da linha
@@ -187,13 +186,12 @@ def main():
                     pygame.draw.rect(screen, LARANJA, (x * SQ_SIZE, y - camara_y, SQ_SIZE, SQ_SIZE))
 
                     # Desenha o quadrado na posicao simetrica
-                    pygame.draw.rect(screen, LARANJA, ((2*len(linha) - x-1) * SQ_SIZE, y - camara_y, SQ_SIZE, SQ_SIZE))
+                    pygame.draw.rect(screen, LARANJA, ((2 * len(linha) - x - 1) * SQ_SIZE, y - camara_y, SQ_SIZE, SQ_SIZE))
 
             y += SQ_SIZE
 
         # desenhar o jogador
         screen.blit(player, (player_x, player_y))
-
         pygame.display.update()
 
     pygame.quit()
