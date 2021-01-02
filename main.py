@@ -49,12 +49,16 @@ def ler_labirinto(imagem):
     return l
 
 
+def figura_jogador(coord, size):
+    return pygame.Rect(*coord, *size)
+
+
 def colisao_jogador_parede(player_coord, player_size, parede_coord, quadrados_linha, camara_y):
     rect_1 = pygame.Rect(parede_coord[0] * SQ_SIZE, parede_coord[1] * SQ_SIZE - camara_y, SQ_SIZE, SQ_SIZE)
     rect_2 = pygame.Rect((quadrados_linha - parede_coord[0] - 1) * SQ_SIZE, parede_coord[1] * SQ_SIZE - camara_y,
                          SQ_SIZE, SQ_SIZE)  # Posicao simetrica
 
-    player_rect = pygame.Rect(player_coord[0], player_coord[1], player_size[0], player_size[1])
+    player_rect = figura_jogador(player_coord, player_size)
     return player_rect.colliderect(rect_1) or player_rect.colliderect(rect_2)
 
 
@@ -166,7 +170,8 @@ def criar_monstros(numero, labirinto, add_y, gravidade):
                 if not m_x:
                     calmo = not random.randint(0, 1)  # escolhe se o monstro vai ser calmo ou nao
                     print(x, monstro_y, calmo)
-                    lista_coordenadas.append(Monstro(*coord_labirinto_to_world(x, monstro_y + add_y, 0), calmo, gravidade))
+                    lista_coordenadas.append(
+                        Monstro(*coord_labirinto_to_world(x, monstro_y + add_y, 0), calmo, gravidade))
                     break
                 m_x -= 1
 
@@ -221,16 +226,21 @@ def main():
         dt = clock.tick()  # tempo que passou desde a ultima chamada
         camara_y += dt * velocidade_y  # mover camara em funcao do tempo
         player_y -= dt * velocidade_y  # mover jogador em funcao do tempo
-        for m in monstros:
-            if m.y - player_y < SCREEN_LINHAS * SQ_SIZE:
-                m.acordado = True  # acorda o monstro e ele começa-se a mexer
-            m.mover(dt, lambda coord, size: colisao_monstro(coord, size, camara_y, labirinto),
-                        lambda coord: coord_world_to_labirinto(*coord, camara_y, convert_int=False),
-                        lambda coord: coord_labirinto_to_world(*coord, camara_y))
 
         keys = pygame.key.get_pressed()
 
         virado, player_x, player_y = mover_jogador(keys, (player_x, player_y), player_size, labirinto, camara_y, dt)
+
+        for m in monstros:
+            if m.y - player_y < SCREEN_LINHAS * SQ_SIZE:
+                m.acordado = True  # acorda o monstro e ele começa-se a mexer
+            m.mover(dt, lambda coord, size: colisao_monstro(coord, size, camara_y, labirinto),
+                    lambda coord: coord_world_to_labirinto(*coord, camara_y, convert_int=False),
+                    lambda coord: coord_labirinto_to_world(*coord, camara_y))
+
+            # Vê se o jogador colide com o monstro
+            if m.colide(figura_jogador((player_x, player_y), player_size)):
+                running = False
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

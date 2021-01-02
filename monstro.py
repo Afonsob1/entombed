@@ -102,3 +102,6 @@ class Monstro:
 
     def desenhar(self, screen):
         screen.blit(self.imagem, (self.x, self.y))
+
+    def colide(self, figura):
+        return figura.colliderect(pygame.Rect(self.x, self.y, *self.size))
