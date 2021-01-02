@@ -1,7 +1,12 @@
 import pygame
+import random
 from PIL import Image
+from monstro import Monstro
+
+## CONSTANTES ##
 
 # dimencoes
+
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 SQ_SIZE = 40  # lado de cada retangulo
@@ -27,6 +32,7 @@ BLACK = (0, 0, 0, 0)
 VIOLETA = (155, 155, 255)
 LARANJA = 0xff8c15
 
+
 # AINDA NAO SEI SE VOU LER O LABIRINTO POR UMA IMAGEM OU SE CRIO UM FCHEIRO TXT A PARTE
 def ler_labirinto(imagem):
     im = Image.open(imagem, 'r')
@@ -44,15 +50,23 @@ def ler_labirinto(imagem):
 
 
 def colisao_jogador_parede(player_coord, player_size, parede_coord, quadrados_linha, camara_y):
-    rect_1 = pygame.Rect(parede_coord[0] * SQ_SIZE, parede_coord[1]*SQ_SIZE - camara_y, SQ_SIZE, SQ_SIZE)
-    rect_2 = pygame.Rect((quadrados_linha - parede_coord[0] - 1) * SQ_SIZE, parede_coord[1]*SQ_SIZE - camara_y, SQ_SIZE, SQ_SIZE)  # Posicao simetrica
+    rect_1 = pygame.Rect(parede_coord[0] * SQ_SIZE, parede_coord[1] * SQ_SIZE - camara_y, SQ_SIZE, SQ_SIZE)
+    rect_2 = pygame.Rect((quadrados_linha - parede_coord[0] - 1) * SQ_SIZE, parede_coord[1] * SQ_SIZE - camara_y,
+                         SQ_SIZE, SQ_SIZE)  # Posicao simetrica
 
     player_rect = pygame.Rect(player_coord[0], player_coord[1], player_size[0], player_size[1])
     return player_rect.colliderect(rect_1) or player_rect.colliderect(rect_2)
 
 
-def coord_player_to_labirinto(x, y, camara_y):
-    return int(x // SQ_SIZE), int((y + camara_y) // SQ_SIZE)
+def coord_world_to_labirinto(x, y, camara_y, convert_int=True):
+    if convert_int:
+        return int(x // SQ_SIZE), int((y + camara_y) // SQ_SIZE)
+
+    return x / SQ_SIZE, (y + camara_y) / SQ_SIZE
+
+
+def coord_labirinto_to_world(x, y, camara_y):
+    return x * SQ_SIZE, y * SQ_SIZE - camara_y
 
 
 def mover_jogador(keys, player_coord, player_size, labirinto, camara_y, dt):
@@ -81,16 +95,17 @@ def mover_jogador(keys, player_coord, player_size, labirinto, camara_y, dt):
                 # Ve se o player ao andar "add_x" pixeis colide com a parede
                 # se colidir nao poe "add_x" a 0, logo nao deixa andar nessa direcao
                 # Quando fica no chao ele andava mais lento se fizer isto isso já nao acontece
-                if colisao_jogador_parede((player_x + add_x, player_y + 1), player_size, (x, y), 2*len(linha), camara_y):
+                if colisao_jogador_parede((player_x + add_x, player_y + 1), player_size, (x, y), 2 * len(linha),
+                                          camara_y):
 
-                    if colisao_jogador_parede((player_x + add_x, player_y - 1), player_size, (x, y), 2*len(linha), camara_y):
+                    if colisao_jogador_parede((player_x + add_x, player_y - 1), player_size, (x, y), 2 * len(linha),
+                                              camara_y):
                         add_x = 0
 
                 # Ve se o player ao andar "add_y" pixeis colide com alguma parede
                 # se colidir poe o "add_y" a 0 nao deixa andar nessa direcao
-                if colisao_jogador_parede((player_x, player_y + add_y), player_size, (x, y), 2*len(linha), camara_y):
+                if colisao_jogador_parede((player_x, player_y + add_y), player_size, (x, y), 2 * len(linha), camara_y):
                     add_y = 0
-
 
     player_x += add_x
     player_y += add_y
@@ -102,7 +117,7 @@ def mover_parede(player_coord, player_size, camara_y, virado, labirinto):
     player_w, player_h = player_size
 
     # calcula as coordenadas do quadrado onde o player está
-    x, y = coord_player_to_labirinto(player_coord[0] + player_w // 2, player_coord[1] + player_h // 2, camara_y)
+    x, y = coord_world_to_labirinto(player_coord[0] + player_w // 2, player_coord[1] + player_h // 2, camara_y)
 
     if virado == ESQ:
         x -= 1
@@ -121,8 +136,49 @@ def mover_parede(player_coord, player_size, camara_y, virado, labirinto):
                 labirinto[y] = labirinto[y][:x] + '0' + labirinto[y][x + 1:]
             else:
                 # Só adiciona parede se o jogador nao ficar preso nela
-                if not colisao_jogador_parede(player_coord, player_size, (x, y), 2*len(labirinto[0]), camara_y):
+                if not colisao_jogador_parede(player_coord, player_size, (x, y), 2 * len(labirinto[0]), camara_y):
                     labirinto[y] = labirinto[y][:x] + '1' + labirinto[y][x + 1:]
+
+
+def criar_monstros(numero, labirinto, add_y, gravidade):
+    # numero de linhas de destancia
+    distancia = (len(labirinto) - 4) // numero  # tem -4 pois nao quero monstros logo no inicio
+
+    # cria monstros ,apartir da 4 linha, e a uma distancia minima
+    lista_linhas = []
+    for i in range(numero):
+        if len(lista_linhas) == 0:
+            lista_linhas.append(4 + random.randint(0, 3))
+        else:
+            lista_linhas.append(random.randint(lista_linhas[-1] + distancia, lista_linhas[-1] + distancia + 2))
+            if lista_linhas[-1] > len(labirinto):
+                del lista_linhas[-1]
+                break
+
+    lista_coordenadas = []
+    for monstro_y in lista_linhas:
+        linha = labirinto[monstro_y]
+        vazio = linha.count('0') * 2  # conta o numero de quadriculas vazias na linha
+        m_x = random.randint(0, vazio - 1)  # escolhe um x aleatorio
+
+        for x, quadrado in enumerate(linha + linha[::-1]):
+            if quadrado == '0':
+                if not m_x:
+                    calmo = not random.randint(0, 1)  # escolhe se o monstro vai ser calmo ou nao
+                    print(x, monstro_y, calmo)
+                    lista_coordenadas.append(Monstro(*coord_labirinto_to_world(x, monstro_y + add_y, 0), calmo, gravidade))
+                    break
+                m_x -= 1
+
+    return lista_coordenadas
+
+
+def colisao_monstro(coord, monstro_size, camara_y, labirinto):
+    for y, linha in enumerate(labirinto):
+        for x, quadrado in enumerate(linha):
+            if quadrado == '1' and colisao_jogador_parede(coord, monstro_size, (x, y), 2 * len(linha), camara_y):
+                return x, y
+    return ()
 
 
 def main():
@@ -139,13 +195,15 @@ def main():
     player_size = (player.get_width(), player.get_height())
 
     player_x, player_y = 100, 200
-    virado = NADA
 
     running = True
-    velocidade_y = 0.05
+    velocidade_y = 0.07
     camara_y = 0
 
-    labirinto = ["1100000000"] * 12 + ler_labirinto("niveis/nivel1.png")
+    labirinto = ler_labirinto("niveis/nivel1.png")
+
+    monstros = criar_monstros(5, labirinto, 12, velocidade_y)
+    labirinto = ["1100000000"] * 12 + labirinto
 
     while running:
         screen.fill(BLACK)
@@ -163,6 +221,12 @@ def main():
         dt = clock.tick()  # tempo que passou desde a ultima chamada
         camara_y += dt * velocidade_y  # mover camara em funcao do tempo
         player_y -= dt * velocidade_y  # mover jogador em funcao do tempo
+        for m in monstros:
+            if m.y - player_y < SCREEN_LINHAS * SQ_SIZE:
+                m.acordado = True  # acorda o monstro e ele começa-se a mexer
+            m.mover(dt, lambda coord, size: colisao_monstro(coord, size, camara_y, labirinto),
+                        lambda coord: coord_world_to_labirinto(*coord, camara_y, convert_int=False),
+                        lambda coord: coord_labirinto_to_world(*coord, camara_y))
 
         keys = pygame.key.get_pressed()
 
@@ -178,17 +242,19 @@ def main():
                     ############## rendering ##############
 
         # desenhar labirinto
-        y = 0  # y da linha
-        for linha in labirinto:
+        for y, linha in enumerate(labirinto):
             for x, i in enumerate(linha):
                 if i == '1':
                     # Desenha o quadrado na posicao x, y
-                    pygame.draw.rect(screen, LARANJA, (x * SQ_SIZE, y - camara_y, SQ_SIZE, SQ_SIZE))
+                    pygame.draw.rect(screen, LARANJA, [*coord_labirinto_to_world(x, y, camara_y), SQ_SIZE, SQ_SIZE])
 
                     # Desenha o quadrado na posicao simetrica
-                    pygame.draw.rect(screen, LARANJA, ((2 * len(linha) - x - 1) * SQ_SIZE, y - camara_y, SQ_SIZE, SQ_SIZE))
+                    pygame.draw.rect(screen, LARANJA,
+                                     [*coord_labirinto_to_world(2 * len(linha) - x - 1, y, camara_y), SQ_SIZE, SQ_SIZE])
 
-            y += SQ_SIZE
+        # desenhar monstros
+        for m in monstros:
+            m.desenhar(screen)
 
         # desenhar o jogador
         screen.blit(player, (player_x, player_y))
