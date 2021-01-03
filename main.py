@@ -10,10 +10,14 @@ from monstro import Monstro
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 SQ_SIZE = 40  # lado de cada retangulo
+MB_WIDTH = SQ_SIZE / 3  # lado do make a break
+MB_HEIGHT = SQ_SIZE / 2  # altura do make a break
 
 # dimencoes do player
 PLAYER_SIZE = 20
 PLAYER_VELOCITY = 0.2
+
+MAKE_BREAK_VELOCITY = 0.1
 
 SCREEN_LINHAS = SCREEN_HEIGHT // SQ_SIZE  # NUMERO DE LINHAS QUE CABEM NA JANELA
 
@@ -47,6 +51,10 @@ def ler_labirinto(imagem):
             s += '0' if sum(pixel_values[width * y + x]) / 3 > 240 else '1'
         l.append(s)
     return l
+
+
+def figura_make_break(coord):
+    return pygame.Rect(coord[0], coord[1] + (SQ_SIZE - MB_HEIGHT) / 2, MB_WIDTH, MB_HEIGHT)
 
 
 def figura_jogador(coord, size):
@@ -138,13 +146,16 @@ def mover_parede(player_coord, player_size, camara_y, virado, labirinto):
         if 2 <= x:  # Não deixa mudar os quadrados da borda do ecra
             if labirinto[y][x] == '1':
                 labirinto[y] = labirinto[y][:x] + '0' + labirinto[y][x + 1:]
+                return True
             else:
                 # Só adiciona parede se o jogador nao ficar preso nela
                 if not colisao_jogador_parede(player_coord, player_size, (x, y), 2 * len(labirinto[0]), camara_y):
                     labirinto[y] = labirinto[y][:x] + '1' + labirinto[y][x + 1:]
+                    return True
+    return False
 
 
-def criar_monstros(numero, labirinto, add_y, gravidade):
+def criar_monstros(numero, labirinto, add_y, gravidade, camara_y):
     # numero de linhas de destancia
     distancia = (len(labirinto) - 4) // numero  # tem -4 pois nao quero monstros logo no inicio
 
@@ -169,9 +180,8 @@ def criar_monstros(numero, labirinto, add_y, gravidade):
             if quadrado == '0':
                 if not m_x:
                     calmo = not random.randint(0, 1)  # escolhe se o monstro vai ser calmo ou nao
-                    print(x, monstro_y, calmo)
-                    lista_coordenadas.append(
-                        Monstro(*coord_labirinto_to_world(x, monstro_y + add_y, 0), calmo, gravidade))
+                    print("MONSTROS: ", x, monstro_y, calmo)
+                    lista_coordenadas.append(Monstro(*coord_labirinto_to_world(x, monstro_y+add_y, camara_y), calmo, gravidade))
                     break
                 m_x -= 1
 
@@ -186,7 +196,37 @@ def colisao_monstro(coord, monstro_size, camara_y, labirinto):
     return ()
 
 
-def main():
+def criar_make_breaks(make_break, labirinto, add_y, camara_y):
+    distancia = (len(labirinto) - 10) // make_break  # tem -10 pois nao quero logo no inicio
+
+    lista_linhas = []
+    for i in range(make_break):
+        if len(lista_linhas) == 0:
+            lista_linhas.append(random.randint(10, 10 + distancia))
+        else:
+            lista_linhas.append(random.randint(lista_linhas[-1] + distancia, lista_linhas[-1] + distancia + 2))
+            if lista_linhas[-1] > len(labirinto):
+                del lista_linhas[-1]
+                break
+
+    lista_coordenadas = []
+    for break_y in lista_linhas:
+        linha = labirinto[break_y]
+        vazio = linha.count('0') * 2  # conta o numero de quadriculas vazias na linha
+        m_x = random.randint(0, vazio - 1)  # escolhe um x aleatorio
+
+        for x, quadrado in enumerate(linha + linha[::-1]):
+            if quadrado == '0':
+                if not m_x:
+                    print("MAKE-BREAK", x, break_y)
+                    lista_coordenadas.append([*coord_labirinto_to_world(x - 1, break_y + add_y, camara_y), DIR])
+                    break
+                m_x -= 1
+
+    return lista_coordenadas
+
+
+def main(number_make_break, n_make_break_labirinto):
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
@@ -207,7 +247,10 @@ def main():
 
     labirinto = ler_labirinto("niveis/nivel1.png")
 
-    monstros = criar_monstros(5, labirinto, 12, velocidade_y)
+    monstros = criar_monstros(5, labirinto, 12, velocidade_y, camara_y)
+
+    make_breaks = criar_make_breaks(n_make_break_labirinto, labirinto, 0, camara_y)
+
     labirinto = ["1100000000"] * 12 + labirinto
 
     while running:
@@ -242,14 +285,48 @@ def main():
             if m.colide(figura_jogador((player_x, player_y), player_size)):
                 running = False
 
+        for n, mb in enumerate(make_breaks):
+            x, y, direcao = mb
+            y -= dt * velocidade_y                  # mover em funcao do tempo, para acompanhar o labirinto
+            lab_x, lab_y = coord_world_to_labirinto(x, y, camara_y)
+
+            # mover make a break
+            if direcao == DIR:
+                parede_x = coord_labirinto_to_world(int(lab_x) + 1, 0, camara_y)[0]
+                # Se a distancia ao lado direito for menor que 1
+                if abs(x + MB_WIDTH + dt * MAKE_BREAK_VELOCITY - parede_x) < 1:
+                    direcao = ESQ
+                else:
+                    x += dt * MAKE_BREAK_VELOCITY
+            elif direcao == ESQ:
+                # Se a distancia ao lado esquerdo do quadrado for menor que 1
+                parede_x = coord_labirinto_to_world(int(lab_x), 0, camara_y)[0]
+                if abs(x - dt * MAKE_BREAK_VELOCITY - parede_x) < 1:
+                    direcao = DIR
+                else:
+                    x -= dt * MAKE_BREAK_VELOCITY
+
+            # ver se jogador o apanha
+            if figura_jogador((player_x, player_y), player_size).colliderect(figura_make_break((x, y))):
+                number_make_break += 3
+                print("mb: ", number_make_break)
+                del make_breaks[n]
+            else:
+                # guarda as alteracoes feitas, a posicao e a direcao
+                make_breaks[n] = x, y, direcao
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    mover_parede((player_x, player_y), player_size, camara_y, virado, labirinto)
+                    # usar make a break
+                    if number_make_break and mover_parede((player_x, player_y), player_size, camara_y, virado,
+                                                          labirinto):
+                        number_make_break -= 1
+                        print("mb: ", number_make_break)
 
-                    ############## rendering ##############
+        ############## rendering ##############
 
         # desenhar labirinto
         for y, linha in enumerate(labirinto):
@@ -266,6 +343,10 @@ def main():
         for m in monstros:
             m.desenhar(screen)
 
+        # desenhar make-break
+        for mx, my, _ in make_breaks:
+            pygame.draw.rect(screen, WHITE, figura_make_break((mx, my)))
+
         # desenhar o jogador
         screen.blit(player, (player_x, player_y))
         pygame.display.update()
@@ -273,4 +354,4 @@ def main():
     pygame.quit()
 
 
-main()
+main(3, 4)
