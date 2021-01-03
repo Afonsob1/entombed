@@ -17,7 +17,7 @@ MB_HEIGHT = SQ_SIZE / 2  # altura do make a break
 PLAYER_SIZE = 20
 PLAYER_VELOCITY = 0.2
 
-MAKE_BREAK_VELOCITY = 0.05
+MAKE_BREAK_VELOCITY = 0.1
 
 SCREEN_LINHAS = SCREEN_HEIGHT // SQ_SIZE  # NUMERO DE LINHAS QUE CABEM NA JANELA
 
@@ -233,6 +233,9 @@ def criar_make_breaks(make_break, labirinto, add_y, camara_y):
 
     lista_coordenadas = []
     for break_y in lista_linhas:
+        if break_y >= len(labirinto):
+            continue
+
         linha = labirinto[break_y]
         vazio = linha.count('0') * 2  # conta o numero de quadriculas vazias na linha
         m_x = random.randint(0, vazio - 1)  # escolhe um x aleatorio
@@ -316,14 +319,15 @@ def main(number_make_break, n_make_break_labirinto):
             if direcao == DIR:
                 parede_x = coord_labirinto_to_world(lab_x + 1, 0, camara_y)[0]
                 # Se a distancia ao lado direito for menor que 1
-                if abs(x + MB_WIDTH + dt * MAKE_BREAK_VELOCITY - parede_x) < 1:
+                if parede_x - (x + MB_WIDTH + dt * MAKE_BREAK_VELOCITY) <= 1:
+                    x = parede_x - MB_WIDTH - 5
                     direcao = ESQ
                 else:
                     x += dt * MAKE_BREAK_VELOCITY
             elif direcao == ESQ:
                 # Se a distancia ao lado esquerdo do quadrado for menor que 1
                 parede_x = coord_labirinto_to_world(lab_x, 0, camara_y)[0]
-                if abs(x - dt * MAKE_BREAK_VELOCITY - parede_x) < 1:
+                if x - dt * MAKE_BREAK_VELOCITY - parede_x <= 1:
                     direcao = DIR
                 else:
                     x -= dt * MAKE_BREAK_VELOCITY
