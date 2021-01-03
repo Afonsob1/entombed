@@ -49,7 +49,7 @@ def desenhar_informacoes(screen, makebreak, vidas, score):
     vidas_txt = "Vidas: " + str(vidas)
     vidas_size = font.size(vidas_txt)[0]
     info = font.render(vidas_txt, True, (255, 255, 255))
-    screen.blit(info, ( SCREEN_WIDTH/2 - vidas_size/2 , 0))
+    screen.blit(info, (SCREEN_WIDTH / 2 - vidas_size / 2, 0))
 
     score_txt = "Score: " + str(score)
     score_size = font.size(score_txt)[0]
@@ -251,26 +251,15 @@ def criar_make_breaks(make_break, labirinto, add_y, camara_y):
     return lista_coordenadas
 
 
-def main(number_make_break, n_make_break_labirinto):
-    pygame.init()
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+def jogo(player_info, makebreak_info, velocidade_y, score, vidas, labirinto, screen):
+    player, player_x, player_y, player_size = player_info
+    number_make_break, n_make_break_labirinto = makebreak_info
 
-    pygame.display.set_caption('Entombed')
-    clock = pygame.time.Clock()
-
-    # jogador
-    player = pygame.image.load('assets/jogador.png')
-    player.set_colorkey(WHITE)
-
-    player_size = (player.get_width(), player.get_height())
-
-    player_x, player_y = 100, 200
-
-    running = True
-    velocidade_y = 0.07
+    perdeu = False
+    acabou = False
+    sair = False
     camara_y = 0
-
-    labirinto = ler_labirinto("niveis/nivel1.png")
+    clock = pygame.time.Clock()
 
     monstros = criar_monstros(5, labirinto, 12, velocidade_y, camara_y)
 
@@ -278,18 +267,18 @@ def main(number_make_break, n_make_break_labirinto):
 
     labirinto = ["1100000000"] * 12 + labirinto
 
-    while running:
+    while not(perdeu or acabou or sair):
         screen.fill(BLACK)
 
         # ver se o mapa ja acabou
         if len(labirinto) * SQ_SIZE - SCREEN_HEIGHT <= camara_y:
-            running = False
+            acabou = True
 
         # ver se jogador ultrapassou limites do ecra
         if player_y < 0:
-            running = False
-        elif player_y > SCREEN_HEIGHT - player.get_height():
-            player_y = SCREEN_HEIGHT - player.get_height()
+            perdeu = True
+        elif player_y > SCREEN_HEIGHT - player_size[0]:
+            player_y = SCREEN_HEIGHT - player_size[1]
 
         dt = clock.tick()  # tempo que passou desde a ultima chamada
         camara_y += dt * velocidade_y  # mover camara em funcao do tempo
@@ -308,7 +297,7 @@ def main(number_make_break, n_make_break_labirinto):
 
             # Vê se o jogador colide com o monstro
             if m.colide(figura_jogador((player_x, player_y), player_size)):
-                running = False
+                perdeu = True
 
         for n, mb in enumerate(make_breaks):
             x, y, direcao = mb
@@ -343,7 +332,7 @@ def main(number_make_break, n_make_break_labirinto):
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                sair = True
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     # usar make a break
@@ -351,6 +340,9 @@ def main(number_make_break, n_make_break_labirinto):
                                                           labirinto):
                         number_make_break -= 1
                         print("mb: ", number_make_break)
+
+        # aumenar score
+        score += dt * velocidade_y / SQ_SIZE / (SCREEN_HEIGHT / SQ_SIZE)
 
         ############## rendering ##############
 
@@ -377,10 +369,44 @@ def main(number_make_break, n_make_break_labirinto):
         screen.blit(player, (player_x, player_y))
 
         # desenhar informacoes
-        desenhar_informacoes(screen, number_make_break, 3, 1000)
+        desenhar_informacoes(screen, number_make_break, vidas, int(score))
         pygame.display.update()
 
+    return perdeu, sair
+
+
+def main(number_make_break, n_make_break_labirinto, score):
+    pygame.init()
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+    pygame.display.set_caption('Entombed')
+
+    # jogador
+    player = pygame.image.load('assets/jogador.png')
+    player.set_colorkey(WHITE)
+
+    player_size = (player.get_width(), player.get_height())
+    player_x, player_y = 100, 200
+
+    player_info = (player, player_x, player_y, player_size)
+
+    labirinto = ler_labirinto("niveis/nivel1.png")
+    velocidade_y = 0.07
+    vidas = 3
+
+    while vidas:
+        perdeu, sair = jogo(player_info, (3, n_make_break_labirinto), velocidade_y, score, vidas, labirinto.copy(), screen)
+        if sair:
+            break
+        if perdeu:
+            vidas -= 1
+        else:
+            # Muda de nivel
+            break
+
+    if vidas == 0:
+        print("PERDEU")
     pygame.quit()
 
 
-main(3, 4)
+main(3, 4, 1)
