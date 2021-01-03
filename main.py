@@ -17,9 +17,13 @@ MB_HEIGHT = SQ_SIZE / 2  # altura do make a break
 PLAYER_SIZE = 20
 PLAYER_VELOCITY = 0.2
 
-MAKE_BREAK_VELOCITY = 0.07
+MAKE_BREAK_VELOCITY = 0.05
 
 SCREEN_LINHAS = SCREEN_HEIGHT // SQ_SIZE  # NUMERO DE LINHAS QUE CABEM NA JANELA
+
+# Pontuacao, vidas e makebreak
+pygame.font.init()
+font = pygame.font.SysFont(None, 32)
 
 # lado que o jogador esta virado
 NADA = 0
@@ -35,6 +39,23 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0, 0)
 VIOLETA = (155, 155, 255)
 LARANJA = 0xff8c15
+
+
+def desenhar_informacoes(screen, makebreak, vidas, score):
+    makebreak_txt = "Make-Break: " + str(makebreak)
+    info = font.render(makebreak_txt, True, (255, 255, 255))
+    screen.blit(info, (100, 0))
+
+    vidas_txt = "Vidas: " + str(vidas)
+    vidas_size = font.size(vidas_txt)[0]
+    info = font.render(vidas_txt, True, (255, 255, 255))
+    screen.blit(info, ( SCREEN_WIDTH/2 - vidas_size/2 , 0))
+
+    score_txt = "Score: " + str(score)
+    score_size = font.size(score_txt)[0]
+
+    info = font.render(score_txt, True, (255, 255, 255))
+    screen.blit(info, (SCREEN_WIDTH - score_size - 100, 0))
 
 
 # AINDA NAO SEI SE VOU LER O LABIRINTO POR UMA IMAGEM OU SE CRIO UM FCHEIRO TXT A PARTE
@@ -181,7 +202,8 @@ def criar_monstros(numero, labirinto, add_y, gravidade, camara_y):
                 if not m_x:
                     calmo = not random.randint(0, 1)  # escolhe se o monstro vai ser calmo ou nao
                     print("MONSTROS: ", x, monstro_y, calmo)
-                    lista_coordenadas.append(Monstro(*coord_labirinto_to_world(x, monstro_y+add_y, camara_y), calmo, gravidade))
+                    lista_coordenadas.append(
+                        Monstro(*coord_labirinto_to_world(x, monstro_y + add_y, camara_y), calmo, gravidade))
                     break
                 m_x -= 1
 
@@ -202,7 +224,7 @@ def criar_make_breaks(make_break, labirinto, add_y, camara_y):
     lista_linhas = []
     for i in range(make_break):
         if len(lista_linhas) == 0:
-            lista_linhas.append(random.randint(10, 10+distancia))
+            lista_linhas.append(random.randint(10, 10 + distancia))
         else:
             lista_linhas.append(random.randint(lista_linhas[-1] + distancia, lista_linhas[-1] + distancia + 1))
             if lista_linhas[-1] > len(labirinto):
@@ -287,7 +309,7 @@ def main(number_make_break, n_make_break_labirinto):
 
         for n, mb in enumerate(make_breaks):
             x, y, direcao = mb
-            y -= dt * velocidade_y                  # mover em funcao do tempo, para acompanhar o labirinto
+            y -= dt * velocidade_y  # mover em funcao do tempo, para acompanhar o labirinto
             lab_x, lab_y = coord_world_to_labirinto(x, y, camara_y)
 
             # mover make a break
@@ -349,6 +371,9 @@ def main(number_make_break, n_make_break_labirinto):
 
         # desenhar o jogador
         screen.blit(player, (player_x, player_y))
+
+        # desenhar informacoes
+        desenhar_informacoes(screen, number_make_break, 3, 1000)
         pygame.display.update()
 
     pygame.quit()
