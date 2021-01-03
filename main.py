@@ -17,7 +17,7 @@ MB_HEIGHT = SQ_SIZE / 2  # altura do make a break
 PLAYER_SIZE = 20
 PLAYER_VELOCITY = 0.2
 
-MAKE_BREAK_VELOCITY = 0.1
+MAKE_BREAK_VELOCITY = 0.07
 
 SCREEN_LINHAS = SCREEN_HEIGHT // SQ_SIZE  # NUMERO DE LINHAS QUE CABEM NA JANELA
 
@@ -202,9 +202,9 @@ def criar_make_breaks(make_break, labirinto, add_y, camara_y):
     lista_linhas = []
     for i in range(make_break):
         if len(lista_linhas) == 0:
-            lista_linhas.append(random.randint(10, 10 + distancia))
+            lista_linhas.append(random.randint(10, 10+distancia))
         else:
-            lista_linhas.append(random.randint(lista_linhas[-1] + distancia, lista_linhas[-1] + distancia + 2))
+            lista_linhas.append(random.randint(lista_linhas[-1] + distancia, lista_linhas[-1] + distancia + 1))
             if lista_linhas[-1] > len(labirinto):
                 del lista_linhas[-1]
                 break
@@ -219,7 +219,7 @@ def criar_make_breaks(make_break, labirinto, add_y, camara_y):
             if quadrado == '0':
                 if not m_x:
                     print("MAKE-BREAK", x, break_y)
-                    lista_coordenadas.append([*coord_labirinto_to_world(x - 1, break_y + add_y, camara_y), DIR])
+                    lista_coordenadas.append([*coord_labirinto_to_world(x, break_y + add_y, camara_y), DIR])
                     break
                 m_x -= 1
 
@@ -249,7 +249,7 @@ def main(number_make_break, n_make_break_labirinto):
 
     monstros = criar_monstros(5, labirinto, 12, velocidade_y, camara_y)
 
-    make_breaks = criar_make_breaks(n_make_break_labirinto, labirinto, 0, camara_y)
+    make_breaks = criar_make_breaks(n_make_break_labirinto, labirinto, 12, camara_y)
 
     labirinto = ["1100000000"] * 12 + labirinto
 
@@ -292,7 +292,7 @@ def main(number_make_break, n_make_break_labirinto):
 
             # mover make a break
             if direcao == DIR:
-                parede_x = coord_labirinto_to_world(int(lab_x) + 1, 0, camara_y)[0]
+                parede_x = coord_labirinto_to_world(lab_x + 1, 0, camara_y)[0]
                 # Se a distancia ao lado direito for menor que 1
                 if abs(x + MB_WIDTH + dt * MAKE_BREAK_VELOCITY - parede_x) < 1:
                     direcao = ESQ
@@ -300,7 +300,7 @@ def main(number_make_break, n_make_break_labirinto):
                     x += dt * MAKE_BREAK_VELOCITY
             elif direcao == ESQ:
                 # Se a distancia ao lado esquerdo do quadrado for menor que 1
-                parede_x = coord_labirinto_to_world(int(lab_x), 0, camara_y)[0]
+                parede_x = coord_labirinto_to_world(lab_x, 0, camara_y)[0]
                 if abs(x - dt * MAKE_BREAK_VELOCITY - parede_x) < 1:
                     direcao = DIR
                 else:
