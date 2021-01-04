@@ -23,7 +23,8 @@ SCREEN_LINHAS = SCREEN_HEIGHT // SQ_SIZE  # NUMERO DE LINHAS QUE CABEM NA JANELA
 
 # Pontuacao, vidas e makebreak
 pygame.font.init()
-font = pygame.font.SysFont(None, 32)
+TXT_SIZE = 32
+font = pygame.font.SysFont(None, TXT_SIZE)
 
 # lado que o jogador esta virado
 NADA = 0
@@ -40,22 +41,28 @@ BLACK = (0, 0, 0, 0)
 VIOLETA = (155, 155, 255)
 LARANJA = 0xff8c15
 
+CORES_NIVEL = (0xff8c15, (11, 179, 2), (2, 191, 191), (0, 0, 255), (164, 7, 248), (253, 157, 251), (255, 0, 0), WHITE)
 
-def desenhar_informacoes(screen, makebreak, vidas, score):
+
+def desenhar_informacoes(screen, makebreak, vidas, score, margem, coracao):
     makebreak_txt = "Make-Break: " + str(makebreak)
-    info = font.render(makebreak_txt, True, (255, 255, 255))
-    screen.blit(info, (100, 0))
-
-    vidas_txt = "Vidas: " + str(vidas)
-    vidas_size = font.size(vidas_txt)[0]
-    info = font.render(vidas_txt, True, (255, 255, 255))
-    screen.blit(info, (SCREEN_WIDTH / 2 - vidas_size / 2, 0))
-
+    # vidas_txt = "Vidas: " + str(vidas)
     score_txt = "Score: " + str(score)
+    text_height = max(font.size(i)[1] for i in (makebreak_txt, score_txt))
+
+    info = font.render(makebreak_txt, True, (255, 255, 255))
+    screen.blit(info, (100, (margem - text_height) / 2))
+
+    # vidas_size = font.size(vidas_txt)[1]
+    # info = font.render(vidas_txt, True, (255, 255, 255))
+    # screen.blit(info, (SCREEN_WIDTH / 2 - vidas_size / 2, (margem - text_height) / 2))
+    for i in range(vidas):
+        screen.blit(coracao, (SCREEN_WIDTH / 2 - (32 * vidas) // 2 + 32 * i, (margem - coracao.get_size()[0]) / 2))
+
     score_size = font.size(score_txt)[0]
 
     info = font.render(score_txt, True, (255, 255, 255))
-    screen.blit(info, (SCREEN_WIDTH - score_size - 100, 0))
+    screen.blit(info, (SCREEN_WIDTH - score_size - 100, (margem - text_height) / 2))
 
 
 # AINDA NAO SEI SE VOU LER O LABIRINTO POR UMA IMAGEM OU SE CRIO UM FCHEIRO TXT A PARTE
@@ -193,6 +200,8 @@ def criar_monstros(numero, labirinto, add_y, gravidade, camara_y):
 
     lista_coordenadas = []
     for monstro_y in lista_linhas:
+        if monstro_y >= len(labirinto):
+            break
         linha = labirinto[monstro_y]
         vazio = linha.count('0') * 2  # conta o numero de quadriculas vazias na linha
         m_x = random.randint(0, vazio - 1)  # escolhe um x aleatorio
@@ -251,14 +260,15 @@ def criar_make_breaks(make_break, labirinto, add_y, camara_y):
     return lista_coordenadas
 
 
-def jogo(player_info, makebreak_info, velocidade_y, score, vidas, labirinto, screen):
+def jogo(cor, coracao, player_info, makebreak_info, velocidade_y, score, vidas, labirinto, screen):
     player, player_x, player_y, player_size = player_info
     number_make_break, n_make_break_labirinto = makebreak_info
 
     perdeu = False
     acabou = False
     sair = False
-    camara_y = 0
+    margem = 32
+    camara_y = 32
     clock = pygame.time.Clock()
 
     monstros = criar_monstros(5, labirinto, 12, velocidade_y, camara_y)
@@ -267,7 +277,7 @@ def jogo(player_info, makebreak_info, velocidade_y, score, vidas, labirinto, scr
 
     labirinto = ["1100000000"] * 12 + labirinto
 
-    while not(perdeu or acabou or sair):
+    while not (perdeu or acabou or sair):
         screen.fill(BLACK)
 
         # ver se o mapa ja acabou
@@ -275,7 +285,7 @@ def jogo(player_info, makebreak_info, velocidade_y, score, vidas, labirinto, scr
             acabou = True
 
         # ver se jogador ultrapassou limites do ecra
-        if player_y < 0:
+        if player_y < margem:
             perdeu = True
         elif player_y > SCREEN_HEIGHT - player_size[0]:
             player_y = SCREEN_HEIGHT - player_size[1]
@@ -351,10 +361,10 @@ def jogo(player_info, makebreak_info, velocidade_y, score, vidas, labirinto, scr
             for x, i in enumerate(linha):
                 if i == '1':
                     # Desenha o quadrado na posicao x, y
-                    pygame.draw.rect(screen, LARANJA, [*coord_labirinto_to_world(x, y, camara_y), SQ_SIZE, SQ_SIZE])
+                    pygame.draw.rect(screen, cor, [*coord_labirinto_to_world(x, y, camara_y), SQ_SIZE, SQ_SIZE])
 
                     # Desenha o quadrado na posicao simetrica
-                    pygame.draw.rect(screen, LARANJA,
+                    pygame.draw.rect(screen, cor,
                                      [*coord_labirinto_to_world(2 * len(linha) - x - 1, y, camara_y), SQ_SIZE, SQ_SIZE])
 
         # desenhar monstros
@@ -369,17 +379,23 @@ def jogo(player_info, makebreak_info, velocidade_y, score, vidas, labirinto, scr
         screen.blit(player, (player_x, player_y))
 
         # desenhar informacoes
-        desenhar_informacoes(screen, number_make_break, vidas, int(score))
+        pygame.draw.rect(screen, BLACK, [0, 0, SCREEN_WIDTH, margem])
+        desenhar_informacoes(screen, number_make_break, vidas, int(score), margem, coracao)
         pygame.display.update()
 
-    return perdeu, sair
+    return perdeu, sair, number_make_break, score
 
 
-def main(number_make_break, n_make_break_labirinto, score):
-    pygame.init()
+def main(n_make_break_labirinto, score):
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
+    global PLAYER_VELOCITY
+
     pygame.display.set_caption('Entombed')
+
+    # coracao
+    coracao = pygame.image.load('assets/coracao.png')
+    coracao.set_colorkey(BLACK)
 
     # jogador
     player = pygame.image.load('assets/jogador.png')
@@ -391,22 +407,31 @@ def main(number_make_break, n_make_break_labirinto, score):
     player_info = (player, player_x, player_y, player_size)
 
     labirinto = ler_labirinto("niveis/nivel1.png")
-    velocidade_y = 0.07
+    velocidade_y = 0.1
     vidas = 3
+    make_brakes = 3
+    nivel = 1
 
     while vidas:
-        perdeu, sair = jogo(player_info, (3, n_make_break_labirinto), velocidade_y, score, vidas, labirinto.copy(), screen)
+        perdeu, sair, make_brakes, score = jogo(CORES_NIVEL[nivel - 1], coracao, player_info,
+                                                (make_brakes, n_make_break_labirinto), velocidade_y, score, vidas,
+                                                labirinto.copy(), screen)
         if sair:
             break
         if perdeu:
             vidas -= 1
         else:
-            # Muda de nivel
-            break
+            # passa de nivel
+            velocidade_y += 0.02
+            PLAYER_VELOCITY += PLAYER_VELOCITY*0.10
+            nivel += 1
 
     if vidas == 0:
         print("PERDEU")
-    pygame.quit()
 
 
-main(3, 4, 1)
+pygame.init()
+
+main(4, 1)
+
+pygame.quit()
