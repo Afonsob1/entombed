@@ -1,6 +1,5 @@
 import pygame
 import random
-from PIL import Image
 from monstro import Monstro
 
 ## CONSTANTES ##
@@ -43,6 +42,67 @@ LARANJA = 0xff8c15
 
 CORES_NIVEL = (0xff8c15, (11, 179, 2), (2, 191, 191), (0, 0, 255), (164, 7, 248), (253, 157, 251), (255, 0, 0), WHITE)
 
+def criar_labirinto():
+    # esta tabela foi tirada da wikipedia
+    # foi este algoritmo que usaram para criar
+    # o jogo original, entombed
+    #          abcde    X
+    TABELA = {'00000': '1',
+              '00001': '1',
+              '00010': '1',
+              '00011': 'R',
+              '00100': '0',
+              '00101': '0',
+              '00110': 'R',
+              '00111': 'R',
+              '01000': '1',
+              '01001': '1',
+              '01010': '1',
+              '01011': '1',
+              '01100': 'R',
+              '01101': '0',
+              '01110': '0',
+              '01111': '0',
+              '10000': '1',
+              '10001': '1',
+              '10010': '1',
+              '10011': 'R',
+              '10100': '0',
+              '10101': '0',
+              '10110': '0',
+              '10111': '0',
+              '11000': 'R',
+              '11001': '0',
+              '11010': '1',
+              '11011': 'R',
+              '11100': 'R',
+              '11101': '0',
+              '11110': '0',
+              '11111': '0'}
+
+    l = ['11' + '0' * 8]
+    for y in range(100):
+        s = "11"  # cada linha começa sempre com 2 paredes
+        for x in range(2, 10):
+            # aqui vamos fazer o algoritmo conforme a tabela
+            if x == 2:
+                a, b, c = '1', '0', random.choice(['0', '1'])
+            else:
+                a, b, c = s[x - 2], s[x - 1], l[-1][x - 1]
+
+            d = l[-1][x]
+
+            # se o 'e' apontar para o um x > 10 é random
+            e = l[-1][x + 1] if x + 1 < 10 else random.choice(['0', '1'])
+            X = TABELA[a + b + c + d + e]
+            if X == 'R':
+                s += random.choice(['0', '1'])
+            else:
+                s += X
+        l.append(s)
+
+    return l
+
 
 def desenhar_informacoes(screen, makebreak, vidas, score, margem, coracao):
     makebreak_txt = "Make-Break: " + str(makebreak)
@@ -63,22 +123,6 @@ def desenhar_informacoes(screen, makebreak, vidas, score, margem, coracao):
 
     info = font.render(score_txt, True, (255, 255, 255))
     screen.blit(info, (SCREEN_WIDTH - score_size - 100, (margem - text_height) / 2))
-
-
-# AINDA NAO SEI SE VOU LER O LABIRINTO POR UMA IMAGEM OU SE CRIO UM FCHEIRO TXT A PARTE
-def ler_labirinto(imagem):
-    im = Image.open(imagem, 'r')
-    width, height = im.size
-    pixel_values = list(im.getdata())
-    l = []
-    for a in range(100):
-        s = "11"
-        for b in range(2, 10):
-            x = b * (width // 20) + width // 20 // 2
-            y = int(20.77 * a + 10)
-            s += '0' if sum(pixel_values[width * y + x]) / 3 > 240 else '1'
-        l.append(s)
-    return l
 
 
 def figura_make_break(coord):
@@ -406,7 +450,7 @@ def main(n_make_break_labirinto, score):
 
     player_info = (player, player_x, player_y, player_size)
 
-    labirinto = ler_labirinto("niveis/nivel1.png")
+    labirinto = criar_labirinto()
     velocidade_y = 0.1
     vidas = 3
     make_brakes = 3
@@ -423,7 +467,8 @@ def main(n_make_break_labirinto, score):
         else:
             # passa de nivel
             velocidade_y += 0.02
-            PLAYER_VELOCITY += PLAYER_VELOCITY*0.10
+            PLAYER_VELOCITY += PLAYER_VELOCITY * 0.10
+            labirinto = criar_labirinto()  # muda de labirinto
             nivel += 1
 
     if vidas == 0:
