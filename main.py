@@ -42,6 +42,7 @@ LARANJA = 0xff8c15
 
 CORES_NIVEL = (0xff8c15, (11, 179, 2), (2, 191, 191), (0, 0, 255), (164, 7, 248), (253, 157, 251), (255, 0, 0), WHITE)
 
+
 def criar_labirinto():
     # esta tabela foi tirada da wikipedia
     # foi este algoritmo que usaram para criar
@@ -106,16 +107,12 @@ def criar_labirinto():
 
 def desenhar_informacoes(screen, makebreak, vidas, score, margem, coracao):
     makebreak_txt = "Make-Break: " + str(makebreak)
-    # vidas_txt = "Vidas: " + str(vidas)
     score_txt = "Score: " + str(score)
     text_height = max(font.size(i)[1] for i in (makebreak_txt, score_txt))
 
     info = font.render(makebreak_txt, True, (255, 255, 255))
     screen.blit(info, (100, (margem - text_height) / 2))
 
-    # vidas_size = font.size(vidas_txt)[1]
-    # info = font.render(vidas_txt, True, (255, 255, 255))
-    # screen.blit(info, (SCREEN_WIDTH / 2 - vidas_size / 2, (margem - text_height) / 2))
     for i in range(vidas):
         screen.blit(coracao, (SCREEN_WIDTH / 2 - (32 * vidas) // 2 + 32 * i, (margem - coracao.get_size()[0]) / 2))
 
@@ -247,13 +244,15 @@ def criar_monstros(numero, labirinto, add_y, gravidade, camara_y):
         if monstro_y >= len(labirinto):
             break
         linha = labirinto[monstro_y]
-        vazio = linha.count('0') * 2  # conta o numero de quadriculas vazias na linha
-        m_x = random.randint(0, vazio - 1)  # escolhe um x aleatorio
+        vazio = linha.count('0') * 2                    # conta o numero de quadriculas vazias na linha
+        if vazio == 0:                                  # nao pode por se a linha nao tiver espacos vazios
+            break
+        m_x = random.randint(0, vazio - 1)              # escolhe um x aleatorio
 
         for x, quadrado in enumerate(linha + linha[::-1]):
             if quadrado == '0':
                 if not m_x:
-                    calmo = not random.randint(0, 1)  # escolhe se o monstro vai ser calmo ou nao
+                    calmo = not random.randint(0, 1)    # escolhe se o monstro vai ser calmo ou nao
                     print("MONSTROS: ", x, monstro_y, calmo)
                     lista_coordenadas.append(
                         Monstro(*coord_labirinto_to_world(x, monstro_y + add_y, camara_y), calmo, gravidade))
@@ -430,12 +429,9 @@ def jogo(cor, coracao, player_info, makebreak_info, velocidade_y, score, vidas, 
     return perdeu, sair, number_make_break, score
 
 
-def main(n_make_break_labirinto, score):
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-
+def comecar_jogo(screen, n_make_break_labirinto, score):
     global PLAYER_VELOCITY
-
-    pygame.display.set_caption('Entombed')
+    PLAYER_VELOCITY = 0.2
 
     # coracao
     coracao = pygame.image.load('assets/coracao.png')
@@ -466,7 +462,7 @@ def main(n_make_break_labirinto, score):
             vidas -= 1
         else:
             # passa de nivel
-            velocidade_y += 0.02
+            velocidade_y += 0.03
             PLAYER_VELOCITY += PLAYER_VELOCITY * 0.10
             labirinto = criar_labirinto()  # muda de labirinto
             nivel += 1
@@ -475,8 +471,68 @@ def main(n_make_break_labirinto, score):
         print("PERDEU")
 
 
-pygame.init()
+def inicio():
+    pygame.init()
+    pygame.display.set_caption('Entombed')
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
-main(4, 1)
+    #botao_comecar = pygame.rect.Rect(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 100, 50)
+    background = pygame.image.load("assets/background.png")
+    background = pygame.transform.scale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
-pygame.quit()
+    insert_coin = [pygame.image.load("assets/insert coin/insert_coin_1.png"),
+                   pygame.image.load("assets/insert coin/insert_coin_2.png"),
+                   pygame.image.load("assets/insert coin/insert_coin_3.png"),
+                   pygame.image.load("assets/insert coin/insert_coin_4.png"),
+                   pygame.image.load("assets/insert coin/insert_coin_5.png"),
+                   pygame.image.load("assets/insert coin/insert_coin_6.png"),
+                   pygame.image.load("assets/insert coin/insert_coin_7.png")]
+    insert_coin_selected = pygame.transform.scale(pygame.image.load("assets/insert coin/insert_coin_8.png"), (200, 100))
+
+    for i, img in enumerate(insert_coin):
+        insert_coin[i] = pygame.transform.scale(img, (200, 100))
+    insert_coin_size = insert_coin[0].get_size()
+    insert_coin_pos = SCREEN_WIDTH / 2 - insert_coin_size[0] / 2, SCREEN_HEIGHT * (2 / 3) - insert_coin_size[1] / 2
+    insert_coin_n = 0
+    insert_coin_rect = pygame.Rect(*insert_coin_pos, *insert_coin_size)
+    clicou_comecar = False
+    sair = False
+
+    titulo = pygame.transform.scale(pygame.image.load("assets/entombed.png"), (500, 100))
+    titulo.set_colorkey(WHITE)
+
+    clock = pygame.time.Clock()
+
+    while not sair:
+        rato_no_insert_coin = insert_coin_rect.collidepoint(*pygame.mouse.get_pos())
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sair = True
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if rato_no_insert_coin:
+                    clicou_comecar = True
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if rato_no_insert_coin:
+                    if clicou_comecar:
+                        # COMECAR JOGO
+                        comecar_jogo(screen, 4, 1)
+                    clicou_comecar = False
+
+        dt = clock.tick(10)
+        insert_coin_n += dt/1000 * 4            # mudar de cor 4 vezes por segundo
+        if insert_coin_n >= len(insert_coin):
+            insert_coin_n = 0
+
+        screen.blit(background, (0, 0))
+        if rato_no_insert_coin:
+            screen.blit(insert_coin_selected, insert_coin_pos)
+        else:
+            screen.blit(insert_coin[int(insert_coin_n)], insert_coin_pos)
+
+        screen.blit(titulo, (SCREEN_WIDTH/2 - titulo.get_size()[0]/2, SCREEN_HEIGHT*(1/6) - titulo.get_size()[1]/2))
+        pygame.display.update()
+
+    pygame.quit()
+
+
+inicio()
