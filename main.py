@@ -170,22 +170,26 @@ def mover_jogador(keys, player_coord, player_size, labirinto, camara_y, dt):
         add_y += dt * PLAYER_VELOCITY
         virado = BAIXO
 
-    for y, linha in enumerate(labirinto):
+    player_x_lab, player_y_lab = coord_world_to_labirinto(player_x, player_y, camara_y)
+
+    for y, linha in enumerate(labirinto[player_y_lab - 1:player_y_lab + 2], player_y_lab - 1):
         for x, i in enumerate(linha):
             if i == '1':
                 # Ve se o player ao andar "add_x" pixeis colide com a parede
                 # se colidir nao poe "add_x" a 0, logo nao deixa andar nessa direcao
-                # Quando fica no chao ele andava mais lento se fizer isto isso já nao acontece
-                if colisao_jogador_parede((player_x + add_x, player_y + 1), player_size, (x, y), 2 * len(linha),
-                                          camara_y):
-
-                    if colisao_jogador_parede((player_x + add_x, player_y - 1), player_size, (x, y), 2 * len(linha),
-                                              camara_y):
-                        add_x = 0
+                if add_x != 0 and colisao_jogador_parede((player_x + add_x, player_y), player_size, (x, y),
+                                                         2 * len(linha), camara_y):
+                    add_x = 0
 
                 # Ve se o player ao andar "add_y" pixeis colide com alguma parede
                 # se colidir poe o "add_y" a 0 nao deixa andar nessa direcao
-                if colisao_jogador_parede((player_x, player_y + add_y), player_size, (x, y), 2 * len(linha), camara_y):
+                if add_y > 0 and colisao_jogador_parede((player_x, player_y + add_y), player_size, (x, y),
+                                                        2 * len(linha), camara_y):
+                    player_y = coord_labirinto_to_world(0, y, camara_y)[1] - player_size[1] - 5
+                elif add_y < 0 and colisao_jogador_parede((player_x, player_y + add_y), player_size, (x, y),
+                                                          2 * len(linha), camara_y):
+                    player_y = coord_labirinto_to_world(0, y + 1, camara_y)[1] + 5
+
                     add_y = 0
 
     player_x += add_x
@@ -246,7 +250,7 @@ def criar_monstros(numero, labirinto, add_y, gravidade, camara_y):
         linha = labirinto[monstro_y]
         vazio = linha.count('0') * 2                    # conta o numero de quadriculas vazias na linha
         if vazio == 0:                                  # nao pode por se a linha nao tiver espacos vazios
-            break
+            continue
         m_x = random.randint(0, vazio - 1)              # escolhe um x aleatorio
 
         for x, quadrado in enumerate(linha + linha[::-1]):
@@ -303,6 +307,14 @@ def criar_make_breaks(make_break, labirinto, add_y, camara_y):
     return lista_coordenadas
 
 
+def colisao_makebreak(rect, camara_y, labirinto):
+    for y, linha in enumerate(labirinto):
+        for x, quadrado in enumerate(linha):
+            if quadrado == '1' and colisao_jogador_parede((rect.x, rect.y), rect.size, (x, y), 2 * len(linha), camara_y):
+                return x, y
+    return ()
+
+
 def jogo(cor, coracao, player_info, makebreak_info, velocidade_y, score, vidas, labirinto, screen):
     player, player_x, player_y, player_size = player_info
     number_make_break, n_make_break_labirinto = makebreak_info
@@ -355,24 +367,19 @@ def jogo(cor, coracao, player_info, makebreak_info, velocidade_y, score, vidas, 
         for n, mb in enumerate(make_breaks):
             x, y, direcao = mb
             y -= dt * velocidade_y  # mover em funcao do tempo, para acompanhar o labirinto
-            lab_x, lab_y = coord_world_to_labirinto(x, y, camara_y)
 
-            # mover make a break
-            if direcao == DIR:
-                parede_x = coord_labirinto_to_world(lab_x + 1, 0, camara_y)[0]
-                # Se a distancia ao lado direito for menor que 1
-                if parede_x - (x + MB_WIDTH + dt * MAKE_BREAK_VELOCITY) <= 1:
-                    x = parede_x - MB_WIDTH - 5
-                    direcao = ESQ
-                else:
-                    x += dt * MAKE_BREAK_VELOCITY
-            elif direcao == ESQ:
-                # Se a distancia ao lado esquerdo do quadrado for menor que 1
-                parede_x = coord_labirinto_to_world(lab_x, 0, camara_y)[0]
-                if x - dt * MAKE_BREAK_VELOCITY - parede_x <= 1:
-                    direcao = DIR
-                else:
-                    x -= dt * MAKE_BREAK_VELOCITY
+            if 0 < y < SCREEN_LINHAS * SQ_SIZE:
+                # mover make a break
+                if direcao == DIR:
+                    if colisao_makebreak(figura_make_break((x + dt * MAKE_BREAK_VELOCITY, y)), camara_y, labirinto):
+                        direcao = ESQ
+                    else:
+                        x += dt * MAKE_BREAK_VELOCITY
+                elif direcao == ESQ:
+                    if colisao_makebreak(figura_make_break((x - dt * MAKE_BREAK_VELOCITY, y)), camara_y, labirinto):
+                        direcao = DIR
+                    else:
+                        x -= dt * MAKE_BREAK_VELOCITY
 
             # ver se jogador o apanha
             if figura_jogador((player_x, player_y), player_size).colliderect(figura_make_break((x, y))):
@@ -407,8 +414,8 @@ def jogo(cor, coracao, player_info, makebreak_info, velocidade_y, score, vidas, 
                     pygame.draw.rect(screen, cor, [*coord_labirinto_to_world(x, y, camara_y), SQ_SIZE, SQ_SIZE])
 
                     # Desenha o quadrado na posicao simetrica
-                    pygame.draw.rect(screen, cor,
-                                     [*coord_labirinto_to_world(2 * len(linha) - x - 1, y, camara_y), SQ_SIZE, SQ_SIZE])
+                    pygame.draw.rect(screen, cor, [*coord_labirinto_to_world(2 * len(linha)-x-1, y, camara_y),
+                                                   SQ_SIZE, SQ_SIZE])
 
         # desenhar monstros
         for m in monstros:
@@ -476,7 +483,6 @@ def inicio():
     pygame.display.set_caption('Entombed')
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
-    #botao_comecar = pygame.rect.Rect(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 100, 50)
     background = pygame.image.load("assets/background.png")
     background = pygame.transform.scale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
