@@ -259,7 +259,7 @@ def criar_monstros(numero, labirinto, add_y, gravidade, camara_y):
                     calmo = not random.randint(0, 1)    # escolhe se o monstro vai ser calmo ou nao
                     print("MONSTROS: ", x, monstro_y, calmo)
                     lista_coordenadas.append(
-                        Monstro(*coord_labirinto_to_world(x, monstro_y + add_y, camara_y), calmo, gravidade))
+                        Monstro(*coord_labirinto_to_world(x, monstro_y + add_y, camara_y), calmo, gravidade, SQ_SIZE))
                     break
                 m_x -= 1
 
@@ -354,8 +354,10 @@ def jogo(cor, coracao, player_info, makebreak_info, velocidade_y, score, vidas, 
         virado, player_x, player_y = mover_jogador(keys, (player_x, player_y), player_size, labirinto, camara_y, dt)
 
         for m in monstros:
-            if m.y - player_y < SCREEN_LINHAS * SQ_SIZE:
+            if 0 <= m.y < SCREEN_LINHAS * SQ_SIZE:
                 m.acordado = True  # acorda o monstro e ele começa-se a mexer
+            else:
+                m.acordado = False
             m.mover(dt, lambda coord, size: colisao_monstro(coord, size, camara_y, labirinto),
                     lambda coord: coord_world_to_labirinto(*coord, camara_y, convert_int=False),
                     lambda coord: coord_labirinto_to_world(*coord, camara_y))

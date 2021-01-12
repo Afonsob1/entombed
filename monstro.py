@@ -14,14 +14,14 @@ class Monstro:
     acordado = False
     centro = False
 
-    def __init__(self, x, y, calmo, gravidade):
-        self.x = x
-        self.y = y
+    def __init__(self, x, y, calmo, gravidade, SQ_SIZE):
         self.calmo = calmo
         self.imagem = pygame.image.load('assets/calmo.png' if self.calmo else 'assets/agressivo.png')
         self.imagem.set_colorkey(WHITE)
         self.gravidade = gravidade
         self.size = self.imagem.get_width(), self.imagem.get_height()
+        self.x = x
+        self.y = y + (SQ_SIZE - self.size[1]) / 2
 
     def mover(self, dt, colide_parede, cordenadas_word_2_lab, cordenadas_lab_2_word):
         self.y -= self.gravidade * dt
@@ -87,15 +87,16 @@ class Monstro:
                 elif self.direcao == CIMA:
                     self.y -= dt * VELOCIDADE
                 # Se chegar ao centro de um quadrado
+                dist_c_x, dist_c_y = cordenadas_word_2_lab((self.x + self.size[0] / 2, self.y + self.size[1]/2))
 
-                if 0 <= abs(cordenadas_word_2_lab((self.x + self.size[0] / 2, self.y))[0] % 1 - 0.5) < 0.01 and \
-                        0 <= abs(cordenadas_word_2_lab((self.x, self.y))[1] % 1) < 0.01:
+                if 0 <= abs(dist_c_x % 1 - 0.5) < 0.1 and 0 <= abs(dist_c_y % 1 - 0.5) < 0.1:
+                    print(self.x)
                     if not self.centro:
                         # mexe o x e o y para o centro
-                        r = cordenadas_word_2_lab((self.x + self.size[0] / 2, self.y))[0]
+                        r = dist_c_x
                         self.x -= r % 1 - 0.5
-                        self.y -= abs(cordenadas_word_2_lab((self.x, self.y))[1] % 1)
-                        self.direcao = random.choice([(DIREITA if r < 10 else ESQUERDA), DIREITA, CIMA if self.direcao != CIMA else random.choice([ESQUERDA, DIREITA]), CIMA, ESQUERDA])
+                        self.y -= abs(dist_c_y % 1)
+                        self.direcao = random.choice([(DIREITA if r < 10 else ESQUERDA), DIREITA, ESQUERDA, self.direcao, CIMA])
                         self.centro = True
                 else:
                     self.centro = False
