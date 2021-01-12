@@ -1,0 +1,14 @@
+# Direcoes
+NADA = 0
+ESQ = 1
+DIR = 2
+CIMA = 3
+BAIXO = 4
+
+# cores
+VERMELHO = (255, 0, 0)
+AZUL = (000, 0, 255)
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0, 0)
+VIOLETA = (155, 155, 255)
+LARANJA = 0xff8c15

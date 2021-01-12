@@ -1,8 +1,11 @@
 import pygame
 import random
 from monstro import Monstro
+from player import Player
 
 ## CONSTANTES ##
+
+from constantes import *
 
 # dimencoes
 
@@ -12,33 +15,14 @@ SQ_SIZE = 40  # lado de cada retangulo
 MB_WIDTH = SQ_SIZE / 3  # lado do make a break
 MB_HEIGHT = SQ_SIZE / 2  # altura do make a break
 
-# dimencoes do player
-PLAYER_SIZE = 20
-PLAYER_VELOCITY = 0.2
-
 MAKE_BREAK_VELOCITY = 0.1
 
 SCREEN_LINHAS = SCREEN_HEIGHT // SQ_SIZE  # NUMERO DE LINHAS QUE CABEM NA JANELA
 
-# Pontuacao, vidas e makebreak
+# Fontes
 pygame.font.init()
 TXT_SIZE = 32
 font = pygame.font.SysFont(None, TXT_SIZE)
-
-# lado que o jogador esta virado
-NADA = 0
-ESQ = 1
-DIR = 2
-CIMA = 3
-BAIXO = 4
-
-# cores
-VERMELHO = (255, 0, 0)
-AZUL = (000, 0, 255)
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0, 0)
-VIOLETA = (155, 155, 255)
-LARANJA = 0xff8c15
 
 CORES_NIVEL = (0xff8c15, (11, 179, 2), (2, 191, 191), (0, 0, 255), (164, 7, 248), (253, 157, 251), (255, 0, 0), WHITE)
 
@@ -126,19 +110,6 @@ def figura_make_break(coord):
     return pygame.Rect(coord[0], coord[1] + (SQ_SIZE - MB_HEIGHT) / 2, MB_WIDTH, MB_HEIGHT)
 
 
-def figura_jogador(coord, size):
-    return pygame.Rect(*coord, *size)
-
-
-def colisao_jogador_parede(player_coord, player_size, parede_coord, quadrados_linha, camara_y):
-    rect_1 = pygame.Rect(parede_coord[0] * SQ_SIZE, parede_coord[1] * SQ_SIZE - camara_y, SQ_SIZE, SQ_SIZE)
-    rect_2 = pygame.Rect((quadrados_linha - parede_coord[0] - 1) * SQ_SIZE, parede_coord[1] * SQ_SIZE - camara_y,
-                         SQ_SIZE, SQ_SIZE)  # Posicao simetrica
-
-    player_rect = figura_jogador(player_coord, player_size)
-    return player_rect.colliderect(rect_1) or player_rect.colliderect(rect_2)
-
-
 def coord_world_to_labirinto(x, y, camara_y, convert_int=True):
     if convert_int:
         return int(x // SQ_SIZE), int((y + camara_y) // SQ_SIZE)
@@ -150,70 +121,29 @@ def coord_labirinto_to_world(x, y, camara_y):
     return x * SQ_SIZE, y * SQ_SIZE - camara_y
 
 
-def mover_jogador(keys, player_coord, player_size, labirinto, camara_y, dt):
-    player_x, player_y = player_coord
+def colisao_parede(retangulo, parede_coord, quadrados_linha, camara_y):
+    rect_1 = pygame.Rect(parede_coord[0] * SQ_SIZE, parede_coord[1] * SQ_SIZE - camara_y, SQ_SIZE, SQ_SIZE)
+    rect_2 = pygame.Rect((quadrados_linha - parede_coord[0] - 1) * SQ_SIZE, parede_coord[1] * SQ_SIZE - camara_y,
+                         SQ_SIZE, SQ_SIZE)  # Posicao simetrica
 
-    add_x = 0
-    add_y = 0
-    virado = NADA
-
-    if keys[pygame.K_LEFT]:
-        add_x -= dt * PLAYER_VELOCITY
-        virado = ESQ
-    if keys[pygame.K_RIGHT]:
-        add_x += dt * PLAYER_VELOCITY
-        virado = DIR
-    if keys[pygame.K_UP]:
-        add_y -= dt * PLAYER_VELOCITY
-        virado = CIMA
-    if keys[pygame.K_DOWN]:
-        add_y += dt * PLAYER_VELOCITY
-        virado = BAIXO
-
-    player_x_lab, player_y_lab = coord_world_to_labirinto(player_x, player_y, camara_y)
-
-    for y, linha in enumerate(labirinto[player_y_lab - 1:player_y_lab + 2], player_y_lab - 1):
-        for x, i in enumerate(linha):
-            if i == '1':
-                # Ve se o player ao andar "add_x" pixeis colide com a parede
-                # se colidir nao poe "add_x" a 0, logo nao deixa andar nessa direcao
-                if add_x != 0 and colisao_jogador_parede((player_x + add_x, player_y), player_size, (x, y),
-                                                         2 * len(linha), camara_y):
-                    add_x = 0
-
-                # Ve se o player ao andar "add_y" pixeis colide com alguma parede
-                # se colidir poe o "add_y" a 0 nao deixa andar nessa direcao
-                if add_y > 0 and colisao_jogador_parede((player_x, player_y + add_y), player_size, (x, y),
-                                                        2 * len(linha), camara_y):
-                    player_y = coord_labirinto_to_world(0, y, camara_y)[1] - player_size[1] - 5
-                elif add_y < 0 and colisao_jogador_parede((player_x, player_y + add_y), player_size, (x, y),
-                                                          2 * len(linha), camara_y):
-                    player_y = coord_labirinto_to_world(0, y + 1, camara_y)[1] + 5
-
-                    add_y = 0
-
-    player_x += add_x
-    player_y += add_y
-    return virado, player_x, player_y
+    return retangulo.colliderect(rect_1) or retangulo.colliderect(rect_2)
 
 
 # parte a parede (usa o make_break)
-def mover_parede(player_coord, player_size, camara_y, virado, labirinto):
-    player_w, player_h = player_size
-
+def mover_parede(jogador, camara_y, labirinto):
     # calcula as coordenadas do quadrado onde o player está
-    x, y = coord_world_to_labirinto(player_coord[0] + player_w // 2, player_coord[1] + player_h // 2, camara_y)
+    x, y = coord_world_to_labirinto(jogador.x + jogador.width // 2, jogador.y + jogador.height // 2, camara_y)
 
-    if virado == ESQ:
+    if jogador.virado == ESQ:
         x -= 1
-    elif virado == DIR:
+    elif jogador.virado == DIR:
         x += 1
-    elif virado == CIMA:
+    elif jogador.virado == CIMA:
         y -= 1
-    elif virado == BAIXO:
+    elif jogador.virado == BAIXO:
         y += 1
 
-    if virado != NADA:
+    if jogador.virado != NADA:
         if x >= 10:
             x = 9 - (x - 10)
         if 2 <= x:  # Não deixa mudar os quadrados da borda do ecra
@@ -222,7 +152,7 @@ def mover_parede(player_coord, player_size, camara_y, virado, labirinto):
                 return True
             else:
                 # Só adiciona parede se o jogador nao ficar preso nela
-                if not colisao_jogador_parede(player_coord, player_size, (x, y), 2 * len(labirinto[0]), camara_y):
+                if not colisao_parede(jogador.retangulo(), (x, y), 2 * len(labirinto[0]), camara_y):
                     labirinto[y] = labirinto[y][:x] + '1' + labirinto[y][x + 1:]
                     return True
     return False
@@ -266,14 +196,6 @@ def criar_monstros(numero, labirinto, add_y, gravidade, camara_y):
     return lista_coordenadas
 
 
-def colisao_monstro(coord, monstro_size, camara_y, labirinto):
-    for y, linha in enumerate(labirinto):
-        for x, quadrado in enumerate(linha):
-            if quadrado == '1' and colisao_jogador_parede(coord, monstro_size, (x, y), 2 * len(linha), camara_y):
-                return x, y
-    return ()
-
-
 def criar_make_breaks(make_break, labirinto, add_y, camara_y):
     distancia = (len(labirinto) - 10) // make_break  # tem -10 pois nao quero logo no inicio
 
@@ -307,23 +229,14 @@ def criar_make_breaks(make_break, labirinto, add_y, camara_y):
     return lista_coordenadas
 
 
-def colisao_makebreak(rect, camara_y, labirinto):
-    for y, linha in enumerate(labirinto):
-        for x, quadrado in enumerate(linha):
-            if quadrado == '1' and colisao_jogador_parede((rect.x, rect.y), rect.size, (x, y), 2 * len(linha), camara_y):
-                return x, y
-    return ()
-
-
-def jogo(cor, coracao, player_info, makebreak_info, velocidade_y, score, vidas, labirinto, screen):
-    player, player_x, player_y, player_size = player_info
+def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labirinto, screen):
     number_make_break, n_make_break_labirinto = makebreak_info
 
     perdeu = False
     acabou = False
     sair = False
     margem = 32
-    camara_y = 32
+    camara_y = margem
     clock = pygame.time.Clock()
 
     monstros = criar_monstros(5, labirinto, 12, velocidade_y, camara_y)
@@ -331,6 +244,13 @@ def jogo(cor, coracao, player_info, makebreak_info, velocidade_y, score, vidas, 
     make_breaks = criar_make_breaks(n_make_break_labirinto, labirinto, 12, camara_y)
 
     labirinto = ["1100000000"] * 12 + labirinto
+
+    def colisao_labirinto(rect):
+        for y, linha in enumerate(labirinto):
+            for x, quadrado in enumerate(linha):
+                if quadrado == '1' and colisao_parede(rect, (x, y), 2 * len(linha), camara_y):
+                    return x, y
+        return ()
 
     while not (perdeu or acabou or sair):
         screen.fill(BLACK)
@@ -340,57 +260,64 @@ def jogo(cor, coracao, player_info, makebreak_info, velocidade_y, score, vidas, 
             acabou = True
 
         # ver se jogador ultrapassou limites do ecra
-        if player_y < margem:
+        if jogador.y < margem:
             perdeu = True
-        elif player_y > SCREEN_HEIGHT - player_size[0]:
-            player_y = SCREEN_HEIGHT - player_size[1]
+        elif jogador.y > SCREEN_HEIGHT - jogador.height:
+            jogador.y = SCREEN_HEIGHT - jogador.height
 
-        dt = clock.tick()  # tempo que passou desde a ultima chamada
-        camara_y += dt * velocidade_y  # mover camara em funcao do tempo
-        player_y -= dt * velocidade_y  # mover jogador em funcao do tempo
+        dt = clock.tick()               # tempo que passou desde a ultima chamada
+        camara_y += dt * velocidade_y   # mover camara em funcao do tempo
+        jogador.y -= dt * velocidade_y  # mover jogador em funcao do tempo
 
         keys = pygame.key.get_pressed()
 
-        virado, player_x, player_y = mover_jogador(keys, (player_x, player_y), player_size, labirinto, camara_y, dt)
+        if keys[pygame.K_LEFT]:
+            jogador.mover(ESQ, dt, colisao_labirinto)
+        if keys[pygame.K_RIGHT]:
+            jogador.mover(DIR, dt, colisao_labirinto)
+        if keys[pygame.K_UP]:
+            jogador.mover(CIMA, dt, colisao_labirinto)
+        if keys[pygame.K_DOWN]:
+            jogador.mover(BAIXO, dt, colisao_labirinto)
 
         for m in monstros:
             if 0 <= m.y < SCREEN_LINHAS * SQ_SIZE:
                 m.acordado = True  # acorda o monstro e ele começa-se a mexer
             else:
                 m.acordado = False
-            m.mover(dt, lambda coord, size: colisao_monstro(coord, size, camara_y, labirinto),
+            m.mover(dt, colisao_labirinto,
                     lambda coord: coord_world_to_labirinto(*coord, camara_y, convert_int=False),
                     lambda coord: coord_labirinto_to_world(*coord, camara_y))
 
             # Vê se o jogador colide com o monstro
-            if m.colide(figura_jogador((player_x, player_y), player_size)):
+            if m.colide(jogador.retangulo()):
                 perdeu = True
 
-        for n, mb in enumerate(make_breaks):
-            x, y, direcao = mb
-            y -= dt * velocidade_y  # mover em funcao do tempo, para acompanhar o labirinto
+        for i, mb in enumerate(make_breaks):
+            m_x, m_y, direcao = mb
+            m_y -= dt * velocidade_y            # mover em funcao do tempo, para acompanhar o labirinto
 
-            if 0 < y < SCREEN_LINHAS * SQ_SIZE:
+            if 0 < m_y < SCREEN_LINHAS * SQ_SIZE:
                 # mover make a break
                 if direcao == DIR:
-                    if colisao_makebreak(figura_make_break((x + dt * MAKE_BREAK_VELOCITY, y)), camara_y, labirinto):
+                    if colisao_labirinto(figura_make_break((m_x + dt * MAKE_BREAK_VELOCITY, m_y))):
                         direcao = ESQ
                     else:
-                        x += dt * MAKE_BREAK_VELOCITY
+                        m_x += dt * MAKE_BREAK_VELOCITY
                 elif direcao == ESQ:
-                    if colisao_makebreak(figura_make_break((x - dt * MAKE_BREAK_VELOCITY, y)), camara_y, labirinto):
+                    if colisao_labirinto(figura_make_break((m_x - dt * MAKE_BREAK_VELOCITY, m_y))):
                         direcao = DIR
                     else:
-                        x -= dt * MAKE_BREAK_VELOCITY
+                        m_x -= dt * MAKE_BREAK_VELOCITY
 
             # ver se jogador o apanha
-            if figura_jogador((player_x, player_y), player_size).colliderect(figura_make_break((x, y))):
+            if jogador.retangulo().colliderect(figura_make_break((m_x, m_y))):
                 number_make_break += 3
                 print("mb: ", number_make_break)
-                del make_breaks[n]
+                del make_breaks[i]
             else:
                 # guarda as alteracoes feitas, a posicao e a direcao
-                make_breaks[n] = x, y, direcao
+                make_breaks[i] = m_x, m_y, direcao
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -398,8 +325,7 @@ def jogo(cor, coracao, player_info, makebreak_info, velocidade_y, score, vidas, 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     # usar make a break
-                    if number_make_break and mover_parede((player_x, player_y), player_size, camara_y, virado,
-                                                          labirinto):
+                    if number_make_break and mover_parede(jogador, camara_y, labirinto):
                         number_make_break -= 1
                         print("mb: ", number_make_break)
 
@@ -428,7 +354,7 @@ def jogo(cor, coracao, player_info, makebreak_info, velocidade_y, score, vidas, 
             pygame.draw.rect(screen, WHITE, figura_make_break((mx, my)))
 
         # desenhar o jogador
-        screen.blit(player, (player_x, player_y))
+        jogador.desenhar(screen)
 
         # desenhar informacoes
         pygame.draw.rect(screen, BLACK, [0, 0, SCREEN_WIDTH, margem])
@@ -439,21 +365,12 @@ def jogo(cor, coracao, player_info, makebreak_info, velocidade_y, score, vidas, 
 
 
 def comecar_jogo(screen, n_make_break_labirinto, score):
-    global PLAYER_VELOCITY
-    PLAYER_VELOCITY = 0.2
-
     # coracao
     coracao = pygame.image.load('assets/coracao.png')
     coracao.set_colorkey(BLACK)
 
     # jogador
-    player = pygame.image.load('assets/jogador.png')
-    player.set_colorkey(WHITE)
-
-    player_size = (player.get_width(), player.get_height())
-    player_x, player_y = 100, 200
-
-    player_info = (player, player_x, player_y, player_size)
+    jogador = Player(100, 200, 0.2)
 
     labirinto = criar_labirinto()
     velocidade_y = 0.1
@@ -462,9 +379,11 @@ def comecar_jogo(screen, n_make_break_labirinto, score):
     nivel = 1
 
     while vidas:
-        perdeu, sair, make_brakes, score = jogo(CORES_NIVEL[nivel - 1], coracao, player_info,
+        perdeu, sair, make_brakes, score = jogo(CORES_NIVEL[nivel - 1], coracao, jogador,
                                                 (make_brakes, n_make_break_labirinto), velocidade_y, score, vidas,
                                                 labirinto.copy(), screen)
+        jogador.x = 100
+        jogador.y = 200
         if sair:
             break
         if perdeu:
@@ -472,7 +391,7 @@ def comecar_jogo(screen, n_make_break_labirinto, score):
         else:
             # passa de nivel
             velocidade_y += 0.03
-            PLAYER_VELOCITY += PLAYER_VELOCITY * 0.10
+            jogador.velocidade += jogador.velocidade * 0.10
             labirinto = criar_labirinto()  # muda de labirinto
             nivel += 1
 
@@ -537,7 +456,7 @@ def inicio():
         else:
             screen.blit(insert_coin[int(insert_coin_n)], insert_coin_pos)
 
-        screen.blit(titulo, (SCREEN_WIDTH/2 - titulo.get_size()[0]/2, SCREEN_HEIGHT*(1/6) - titulo.get_size()[1]/2))
+        screen.blit(titulo, (SCREEN_WIDTH/2 - titulo.get_width()/2, SCREEN_HEIGHT*(1/6) - titulo.get_height()/2))
         pygame.display.update()
 
     pygame.quit()

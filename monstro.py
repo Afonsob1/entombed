@@ -1,16 +1,13 @@
 import pygame
 import random
+from constantes import *
 
-CIMA = 0
-ESQUERDA = 1
-DIREITA = 2
-WHITE = (255, 255, 255)
 VELOCIDADE = 0.15
 
 
 class Monstro:
-    direcao = DIREITA
-    anterior = DIREITA
+    direcao = DIR
+    anterior = DIR
     acordado = False
     centro = False
 
@@ -23,33 +20,33 @@ class Monstro:
         self.x = x
         self.y = y + (SQ_SIZE - self.size[1]) / 2
 
-    def mover(self, dt, colide_parede, cordenadas_word_2_lab, cordenadas_lab_2_word):
+    def mover(self, dt, colide_labirinto, cordenadas_word_2_lab, cordenadas_lab_2_word):
         self.y -= self.gravidade * dt
         if self.acordado:
             if self.calmo:
                 self.direcao = self.direcao if random.randint(0, 1000) > 2 else CIMA  # Quando se lembra sobe
-                if self.direcao == DIREITA:
+                if self.direcao == DIR:
                     # Anda para a direita até encontrar um obstaculo quando encontra pode andar para
                     # o lado contrario ou subir
-                    if colide_parede((self.x + dt * VELOCIDADE, self.y), self.size):
-                        self.direcao = CIMA if random.randint(0, 1) else ESQUERDA
-                        self.anterior = DIREITA
+                    if colide_labirinto(pygame.Rect(self.x + dt * VELOCIDADE, self.y, *self.size)):
+                        self.direcao = CIMA if random.randint(0, 1) else ESQ
+                        self.anterior = DIR
                     else:
                         self.x += dt * VELOCIDADE
-                elif self.direcao == ESQUERDA:
+                elif self.direcao == ESQ:
                     # Anda para a esquerda até encontrar um obstaculo quando encontra pode andar para
                     # o lado contrario ou subir
-                    if colide_parede((self.x - dt * VELOCIDADE, self.y), self.size):
-                        self.direcao = CIMA if random.randint(0, 1) else DIREITA
-                        self.anterior = ESQUERDA
+                    if colide_labirinto(pygame.Rect(self.x - dt * VELOCIDADE, self.y, *self.size)):
+                        self.direcao = CIMA if random.randint(0, 1) else DIR
+                        self.anterior = ESQ
                     else:
                         self.x -= dt * VELOCIDADE
                 elif self.direcao == CIMA:
                     # Se estiver a andar para cima anda até nao conseguir mais e depois,
                     # se antes de subir estava a andar para a esquerda começa a andar para a direita de nao o contrario
-                    if colide_parede((self.x, self.y - dt * VELOCIDADE), self.size):
+                    if colide_labirinto(pygame.Rect(self.x, self.y - dt * VELOCIDADE, *self.size)):
                         self.y += 1
-                        self.direcao = DIREITA if self.anterior == ESQUERDA else ESQUERDA
+                        self.direcao = DIR if self.anterior == ESQ else ESQ
                         self.anterior = CIMA
                     else:
                         self.y -= dt * VELOCIDADE
@@ -61,7 +58,7 @@ class Monstro:
                         # mexe o x e o y para o centro
                         self.y -= abs(cordenadas_word_2_lab((self.x, self.y))[1] % 1)
 
-                        self.direcao = random.choice([DIREITA, ESQUERDA] + [CIMA] * 3)  # quando se lembra vira
+                        self.direcao = random.choice([DIR, ESQ] + [CIMA] * 3)  # quando se lembra vira
                         self.centro = True
                 else:
                     self.centro = False
@@ -70,18 +67,18 @@ class Monstro:
                 # Quando nao e calmo pode andar nas paredes
                 # Tem comportamento imprevisivel
 
-                if self.direcao == ESQUERDA:
+                if self.direcao == ESQ:
                     # Verifica se sai do labirinto, se o x for 1
                     if int(cordenadas_word_2_lab((self.x - dt * VELOCIDADE, self.y))[0]) <= 1:
                         self.x = cordenadas_lab_2_word((2, 0))[0]
-                        self.direcao = DIREITA
+                        self.direcao = DIR
                     else:
                         self.x -= dt * VELOCIDADE
-                elif self.direcao == DIREITA:
+                elif self.direcao == DIR:
                     # Verifica se sai do labirinto, se o x for 2
                     if int(cordenadas_word_2_lab((self.x + self.size[0] + dt * VELOCIDADE, self.y))[0]) >= 18:
                         self.x = cordenadas_lab_2_word((18, 0))[0] - self.size[0]
-                        self.direcao = ESQUERDA
+                        self.direcao = ESQ
                     else:
                         self.x += dt * VELOCIDADE
                 elif self.direcao == CIMA:
@@ -96,7 +93,7 @@ class Monstro:
                         r = dist_c_x
                         self.x -= r % 1 - 0.5
                         self.y -= abs(dist_c_y % 1)
-                        self.direcao = random.choice([(DIREITA if r < 10 else ESQUERDA), DIREITA, ESQUERDA, self.direcao, CIMA])
+                        self.direcao = random.choice([(DIR if r < 10 else ESQ), DIR, ESQ, self.direcao, CIMA])
                         self.centro = True
                 else:
                     self.centro = False
