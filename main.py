@@ -7,6 +7,8 @@ from player import Player
 
 from constantes import *
 
+HIGHSCORE = 0
+
 # dimencoes
 
 SCREEN_WIDTH = 800
@@ -410,7 +412,48 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
     return perdeu, sair, number_make_break, score
 
 
-def comecar_jogo(screen, n_make_break_labirinto, score):
+def gameover(screen, score):
+    print("Perdeu")
+    gameover_img = pygame.transform.scale(pygame.image.load("assets/gameover.png"), (500, 130))
+    gameover_pos = SCREEN_WIDTH/2-gameover_img.get_width()/2, SCREEN_HEIGHT/2 - gameover_img.get_height()
+
+    font = pygame.font.SysFont(None, 50)
+    size_go = font.render("Score: " + str(score), True, (255, 255, 255)).get_size()
+    pos_go = SCREEN_WIDTH/2-size_go[0]/2, gameover_pos[1] + gameover_img.get_height() + 100
+
+    i = 0
+
+    highscore_txt = font.render("HightScore: "+str(HIGHSCORE), True, (255, 255, 255))
+    highscore_pos = SCREEN_WIDTH/2-highscore_txt.get_width()/2, pos_go[1] + size_go[1] + 20
+
+    clock = pygame.time.Clock()
+    sair = False
+    while i <= score and not sair:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sair = True
+
+        screen.fill(BLACK)
+        screen.blit(gameover_img, gameover_pos)
+
+        score_txt = font.render("Score: "+str(i), True, (255, 255, 255))
+        screen.blit(score_txt, pos_go)
+        screen.blit(highscore_txt, highscore_pos)
+        pygame.display.update()
+        i += 1
+        clock.tick(10)
+
+    i = 3
+    while i > 0 and not sair:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sair = True
+        i -= clock.tick(10)/1000
+
+
+def comecar_jogo(screen, n_make_break_labirinto):
+    global HIGHSCORE
+
     # coracao
     coracao = pygame.image.load('assets/coracao.png')
     coracao.set_colorkey(BLACK)
@@ -429,6 +472,7 @@ def comecar_jogo(screen, n_make_break_labirinto, score):
     nivel = 1
 
     tocar(musica_fundo, -1)
+    score = 1
 
     while vidas:
         perdeu, sair, make_brakes, score = jogo(CORES_NIVEL[nivel - 1], coracao, jogador,
@@ -449,10 +493,14 @@ def comecar_jogo(screen, n_make_break_labirinto, score):
             labirinto = criar_labirinto()  # muda de labirinto
             nivel += 1
 
+    musica_fundo.stop()
+
+    if score > HIGHSCORE:
+        HIGHSCORE = int(score)
+
     if vidas == 0:
         tocar(lost)
-        print("PERDEU")
-    musica_fundo.stop()
+        gameover(screen, int(score))
 
 
 def inicio():
@@ -509,7 +557,7 @@ def inicio():
                     if clicou_comecar:
                         # COMECAR JOGO
                         musica_menu.stop()
-                        comecar_jogo(screen, 4, 1)
+                        comecar_jogo(screen, 4)
                         tocar(musica_menu, -1)
                     clicou_comecar = False
 
