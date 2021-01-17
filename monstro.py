@@ -13,10 +13,21 @@ class Monstro:
 
     def __init__(self, x, y, calmo, gravidade, SQ_SIZE):
         self.calmo = calmo
-        self.imagem = pygame.image.load('assets/calmo.png' if self.calmo else 'assets/agressivo.png')
-        self.imagem.set_colorkey(WHITE)
+        self.size = int(SQ_SIZE * 0.7), int(SQ_SIZE * 0.7)
+
+        self.imagem_list = []
+        if calmo:
+            self.imagem_list = [pygame.image.load('assets/monstros/calmo_1.png'),
+                                pygame.image.load('assets/monstros/calmo_2.png')]
+        else:
+            self.imagem_list = [pygame.image.load('assets/monstros/agressivo_1.png'),
+                                pygame.image.load('assets/monstros/agressivo_2.png')]
+
+        for i, img in enumerate(self.imagem_list):
+            self.imagem_list[i] = pygame.transform.scale(img, self.size)
+            self.imagem_list[i].set_colorkey(WHITE)
+
         self.gravidade = gravidade
-        self.size = self.imagem.get_width(), self.imagem.get_height()
         self.x = x
         self.y = y + (SQ_SIZE - self.size[1]) / 2
 
@@ -84,10 +95,9 @@ class Monstro:
                 elif self.direcao == CIMA:
                     self.y -= dt * VELOCIDADE
                 # Se chegar ao centro de um quadrado
-                dist_c_x, dist_c_y = cordenadas_word_2_lab((self.x + self.size[0] / 2, self.y + self.size[1]/2))
+                dist_c_x, dist_c_y = cordenadas_word_2_lab((self.x + self.size[0] / 2, self.y + self.size[1] / 2))
 
                 if 0 <= abs(dist_c_x % 1 - 0.5) < 0.1 and 0 <= abs(dist_c_y % 1 - 0.5) < 0.1:
-                    print(self.x)
                     if not self.centro:
                         # mexe o x e o y para o centro
                         r = dist_c_x
@@ -99,7 +109,10 @@ class Monstro:
                     self.centro = False
 
     def desenhar(self, screen):
-        screen.blit(self.imagem, (self.x, self.y))
+        i = 0
+        if self.direcao == ESQ:
+            i = 1
+        screen.blit(self.imagem_list[i], (self.x, self.y))
 
     def colide(self, figura):
         return figura.colliderect(pygame.Rect(self.x, self.y, *self.size))

@@ -3,7 +3,7 @@ import random
 from monstro import Monstro
 from player import Player
 
-## CONSTANTES ##
+# CONSTANTES
 
 from constantes import *
 
@@ -23,8 +23,6 @@ SCREEN_LINHAS = SCREEN_HEIGHT // SQ_SIZE  # NUMERO DE LINHAS QUE CABEM NA JANELA
 
 # Fontes
 pygame.font.init()
-TXT_SIZE = 32
-font = pygame.font.SysFont(None, TXT_SIZE)
 
 CORES_NIVEL = (0xff8c15, (11, 179, 2), (2, 191, 191), (0, 0, 255), (164, 7, 248), (253, 157, 251), (255, 0, 0), WHITE)
 
@@ -42,6 +40,39 @@ sound_pos = SCREEN_WIDTH - sound_on.get_width() - 2, 2
 
 sound_rect = pygame.Rect(*sound_pos, *sound_on.get_size())
 
+TABELA = {'00000': '1',
+          '00001': '1',
+          '00010': '1',
+          '00011': 'R',
+          '00100': '0',
+          '00101': '0',
+          '00110': 'R',
+          '00111': 'R',
+          '01000': '1',
+          '01001': '1',
+          '01010': '1',
+          '01011': '1',
+          '01100': 'R',
+          '01101': '0',
+          '01110': '0',
+          '01111': '0',
+          '10000': '1',
+          '10001': '1',
+          '10010': '1',
+          '10011': 'R',
+          '10100': '0',
+          '10101': '0',
+          '10110': '0',
+          '10111': '0',
+          '11000': 'R',
+          '11001': '0',
+          '11010': '1',
+          '11011': 'R',
+          '11100': 'R',
+          '11101': '0',
+          '11110': '0',
+          '11111': '0'}
+
 
 def tocar(musica, n=0):
     if som:
@@ -49,68 +80,32 @@ def tocar(musica, n=0):
 
 
 def criar_labirinto():
-    # esta tabela foi tirada da wikipedia
-    # foi este algoritmo que usaram para criar
-    # o jogo original, entombed
-    #          abcde    X
-    TABELA = {'00000': '1',
-              '00001': '1',
-              '00010': '1',
-              '00011': 'R',
-              '00100': '0',
-              '00101': '0',
-              '00110': 'R',
-              '00111': 'R',
-              '01000': '1',
-              '01001': '1',
-              '01010': '1',
-              '01011': '1',
-              '01100': 'R',
-              '01101': '0',
-              '01110': '0',
-              '01111': '0',
-              '10000': '1',
-              '10001': '1',
-              '10010': '1',
-              '10011': 'R',
-              '10100': '0',
-              '10101': '0',
-              '10110': '0',
-              '10111': '0',
-              '11000': 'R',
-              '11001': '0',
-              '11010': '1',
-              '11011': 'R',
-              '11100': 'R',
-              '11101': '0',
-              '11110': '0',
-              '11111': '0'}
-
-    l = ['11' + '0' * 8]
+    lab = ['11' + '0' * 8]
     for y in range(100):
-        s = "11"  # cada linha começa sempre com 2 paredes
+        s = "11"            # cada linha começa sempre com 2 paredes
         for x in range(2, 10):
-            # aqui vamos fazer o algoritmo conforme a tabela
             if x == 2:
                 a, b, c = '1', '0', random.choice(['0', '1'])
             else:
-                a, b, c = s[x - 2], s[x - 1], l[-1][x - 1]
+                a, b, c = s[x - 2], s[x - 1], lab[-1][x - 1]
 
-            d = l[-1][x]
+            d = lab[-1][x]
 
             # se o 'e' apontar para o um x > 10 é random
-            e = l[-1][x + 1] if x + 1 < 10 else random.choice(['0', '1'])
+            e = lab[-1][x + 1] if x + 1 < 10 else random.choice(['0', '1'])
             X = TABELA[a + b + c + d + e]
             if X == 'R':
                 s += random.choice(['0', '1'])
             else:
                 s += X
-        l.append(s)
+        lab.append(s)
 
-    return l
+    return lab
 
 
 def desenhar_informacoes(screen, makebreak, vidas, score, margem, coracao):
+    font = pygame.font.SysFont(None, 32)
+
     makebreak_txt = "Make-Break: " + str(makebreak)
     score_txt = "Score: " + str(score)
     text_height = max(font.size(i)[1] for i in (makebreak_txt, score_txt))
@@ -208,9 +203,8 @@ def criar_monstros(numero, labirinto, add_y, gravidade, camara_y):
             if quadrado == '0':
                 if not m_x:
                     calmo = not random.randint(0, 1)    # escolhe se o monstro vai ser calmo ou nao
-                    print("MONSTROS: ", x, monstro_y, calmo)
-                    lista_coordenadas.append(
-                        Monstro(*coord_labirinto_to_world(x, monstro_y + add_y, camara_y), calmo, gravidade, SQ_SIZE))
+                    lista_coordenadas.append(Monstro(*coord_labirinto_to_world(x, monstro_y + add_y, camara_y), calmo,
+                                                     gravidade, SQ_SIZE))
                     break
                 m_x -= 1
 
@@ -242,7 +236,6 @@ def criar_make_breaks(make_break, labirinto, add_y, camara_y):
         for x, quadrado in enumerate(linha + linha[::-1]):
             if quadrado == '0':
                 if not m_x:
-                    print("MAKE-BREAK", x, break_y)
                     lista_coordenadas.append([*coord_labirinto_to_world(x, break_y + add_y, camara_y), DIR])
                     break
                 m_x -= 1
@@ -343,7 +336,6 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
             if jogador.retangulo().colliderect(figura_make_break((m_x, m_y))):
                 number_make_break += 3
                 tocar(apanhou)
-                print("mb: ", number_make_break)
                 del make_breaks[i]
             else:
                 # guarda as alteracoes feitas, a posicao e a direcao
@@ -358,7 +350,6 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
                     # usar make a break
                     if number_make_break and mover_parede(jogador, camara_y, labirinto):
                         number_make_break -= 1
-                        print("mb: ", number_make_break)
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if rato_no_sound:
                     clicou_sound = True
@@ -378,6 +369,10 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
 
         ############## rendering ##############
 
+        # desenhar monstros
+        for m in monstros:
+            m.desenhar(screen)
+
         # desenhar labirinto
         for y, linha in enumerate(labirinto):
             for x, i in enumerate(linha):
@@ -386,19 +381,15 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
                     pygame.draw.rect(screen, cor, [*coord_labirinto_to_world(x, y, camara_y), SQ_SIZE, SQ_SIZE])
 
                     # Desenha o quadrado na posicao simetrica
-                    pygame.draw.rect(screen, cor, [*coord_labirinto_to_world(2 * len(linha)-x-1, y, camara_y),
+                    pygame.draw.rect(screen, cor, [*coord_labirinto_to_world(2 * len(linha) - x - 1, y, camara_y),
                                                    SQ_SIZE, SQ_SIZE])
-
-        # desenhar monstros
-        for m in monstros:
-            m.desenhar(screen)
 
         # desenhar make-break
         for mx, my, _ in make_breaks:
             pygame.draw.rect(screen, WHITE, figura_make_break((mx, my)))
 
         # desenhar o jogador
-        jogador.desenhar(screen)
+        jogador.desenhar(screen, dt)
 
         # desenhar informacoes
         pygame.draw.rect(screen, BLACK, [0, 0, SCREEN_WIDTH, margem])
@@ -413,17 +404,16 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
 
 
 def gameover(screen, score):
-    print("Perdeu")
     gameover_img = pygame.transform.scale(pygame.image.load("assets/gameover.png"), (500, 130))
     gameover_pos = SCREEN_WIDTH/2-gameover_img.get_width()/2, SCREEN_HEIGHT/2 - gameover_img.get_height()
 
-    font = pygame.font.SysFont(None, 50)
-    size_go = font.render("Score: " + str(score), True, (255, 255, 255)).get_size()
+    fonte = pygame.font.SysFont(None, 50)
+    size_go = fonte.render("Score: " + str(score), True, (255, 255, 255)).get_size()
     pos_go = SCREEN_WIDTH/2-size_go[0]/2, gameover_pos[1] + gameover_img.get_height() + 100
 
     i = 0
 
-    highscore_txt = font.render("HightScore: "+str(HIGHSCORE), True, (255, 255, 255))
+    highscore_txt = fonte.render("HighScore: "+str(HIGHSCORE), True, (255, 255, 255))
     highscore_pos = SCREEN_WIDTH/2-highscore_txt.get_width()/2, pos_go[1] + size_go[1] + 20
 
     clock = pygame.time.Clock()
@@ -436,7 +426,7 @@ def gameover(screen, score):
         screen.fill(BLACK)
         screen.blit(gameover_img, gameover_pos)
 
-        score_txt = font.render("Score: "+str(i), True, (255, 255, 255))
+        score_txt = fonte.render("Score: "+str(i), True, (255, 255, 255))
         screen.blit(score_txt, pos_go)
         screen.blit(highscore_txt, highscore_pos)
         pygame.display.update()
@@ -475,7 +465,7 @@ def comecar_jogo(screen, n_make_break_labirinto):
     score = 1
 
     while vidas:
-        perdeu, sair, make_brakes, score = jogo(CORES_NIVEL[nivel - 1], coracao, jogador,
+        perdeu, sair, make_brakes, score = jogo(CORES_NIVEL[(nivel - 1) % len(CORES_NIVEL)], coracao, jogador,
                                                 (make_brakes, n_make_break_labirinto), velocidade_y, score, vidas,
                                                 labirinto.copy(), screen)
         jogador.x = 100

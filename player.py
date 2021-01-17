@@ -8,7 +8,13 @@ class Player:
         self.y = y
         self.velocidade = velocidade
 
-        self.imagem = pygame.image.load('assets/jogador.png')
+        self.imagem_list = [pygame.image.load('assets/jogador/jogador_1.png'),
+                            pygame.image.load('assets/jogador/jogador_2.png')]
+        for i, img in enumerate(self.imagem_list):
+            self.imagem_list[i] = pygame.transform.scale(img, (20, 25))
+
+        self.time = 0
+        self.imagem = self.imagem_list[0]
         self.imagem.set_colorkey(WHITE)
         self.size = self.imagem.get_size()
         self.width = self.imagem.get_width()
@@ -19,7 +25,12 @@ class Player:
     def retangulo(self):
         return pygame.Rect(self.x, self.y, *self.size)
 
-    def desenhar(self, screen):
+    def desenhar(self, screen, dt):
+        self.time += dt/1000
+        if int(self.time*4) % 2:
+            self.imagem = self.imagem_list[0]
+        else:
+            self.imagem = self.imagem_list[1]
         screen.blit(self.imagem, (self.x, self.y))
 
     def mover(self, direcao, dt, colide_labirinto):
@@ -42,9 +53,9 @@ class Player:
 
             # animacao pequena
             if add_y < 0:
-                self.y += 5
+                self.y += 3
             elif add_y > 0:
-                self.y -= 5
+                self.y -= 3
             add_y = 0
 
         self.x += add_x
