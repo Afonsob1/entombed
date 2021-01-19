@@ -2,6 +2,7 @@ import pygame
 import random
 from monstro import Monstro
 from player import Player
+import sys
 
 # CONSTANTES
 
@@ -23,6 +24,8 @@ SCREEN_LINHAS = SCREEN_HEIGHT // SQ_SIZE  # NUMERO DE LINHAS QUE CABEM NA JANELA
 
 # Fontes
 pygame.font.init()
+fonte_32 = pygame.font.SysFont(None, 32)
+fonte_50 = pygame.font.SysFont(None, 50)
 
 CORES_NIVEL = (0xff8c15, (11, 179, 2), (2, 191, 191), (0, 0, 255), (164, 7, 248), (253, 157, 251), (255, 0, 0), WHITE)
 
@@ -104,21 +107,19 @@ def criar_labirinto():
 
 
 def desenhar_informacoes(screen, makebreak, vidas, score, margem, coracao):
-    font = pygame.font.SysFont(None, 32)
-
     makebreak_txt = "Make-Break: " + str(makebreak)
     score_txt = "Score: " + str(score)
-    text_height = max(font.size(i)[1] for i in (makebreak_txt, score_txt))
+    text_height = max(fonte_32.size(i)[1] for i in (makebreak_txt, score_txt))
 
-    info = font.render(makebreak_txt, True, (255, 255, 255))
+    info = fonte_32.render(makebreak_txt, True, (255, 255, 255))
     screen.blit(info, (100, (margem - text_height) / 2))
 
     for i in range(vidas):
         screen.blit(coracao, (SCREEN_WIDTH / 2 - (32 * vidas) // 2 + 32 * i, (margem - coracao.get_size()[0]) / 2))
 
-    score_size = font.size(score_txt)[0]
+    score_size = fonte_32.size(score_txt)[0]
 
-    info = font.render(score_txt, True, (255, 255, 255))
+    info = fonte_32.render(score_txt, True, (255, 255, 255))
     screen.blit(info, (SCREEN_WIDTH - score_size - 100, (margem - text_height) / 2))
 
 
@@ -249,7 +250,7 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
     # sons
     global som
     apanhou = pygame.mixer.Sound('assets/sounds/apanhou.wav')
-    perigo = pygame.mixer.Sound('assets/sounds/perigoso.mp3')
+    perigo = pygame.mixer.Sound('assets/sounds/perigoso.wav')
     clicou_sound = False
 
     perdeu = False
@@ -345,6 +346,7 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sair = True
+                return perdeu, sair, number_make_break, score
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     # usar make a break
@@ -407,13 +409,12 @@ def gameover(screen, score):
     gameover_img = pygame.transform.scale(pygame.image.load("assets/gameover.png"), (500, 130))
     gameover_pos = SCREEN_WIDTH/2-gameover_img.get_width()/2, SCREEN_HEIGHT/2 - gameover_img.get_height()
 
-    fonte = pygame.font.SysFont(None, 50)
-    size_go = fonte.render("Score: " + str(score), True, (255, 255, 255)).get_size()
+    size_go = fonte_50.render("Score: " + str(score), True, (255, 255, 255)).get_size()
     pos_go = SCREEN_WIDTH/2-size_go[0]/2, gameover_pos[1] + gameover_img.get_height() + 100
 
     i = 0
 
-    highscore_txt = fonte.render("HighScore: "+str(HIGHSCORE), True, (255, 255, 255))
+    highscore_txt = fonte_50.render("HighScore: "+str(HIGHSCORE), True, (255, 255, 255))
     highscore_pos = SCREEN_WIDTH/2-highscore_txt.get_width()/2, pos_go[1] + size_go[1] + 20
 
     clock = pygame.time.Clock()
@@ -422,11 +423,14 @@ def gameover(screen, score):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sair = True
+                pygame.quit()
+                sys.exit()
+                return
 
         screen.fill(BLACK)
         screen.blit(gameover_img, gameover_pos)
 
-        score_txt = fonte.render("Score: "+str(i), True, (255, 255, 255))
+        score_txt = fonte_50.render("Score: "+str(i), True, (255, 255, 255))
         screen.blit(score_txt, pos_go)
         screen.blit(highscore_txt, highscore_pos)
         pygame.display.update()
@@ -438,6 +442,9 @@ def gameover(screen, score):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sair = True
+                pygame.quit()
+                sys.exit()
+                return
         i -= clock.tick(10)/1000
 
 
@@ -525,7 +532,7 @@ def inicio():
     titulo = pygame.transform.scale(pygame.image.load("assets/entombed.png"), (500, 100))
     titulo.set_colorkey(WHITE)
 
-    musica_menu = pygame.mixer.Sound('assets/sounds/menu.mp3')
+    musica_menu = pygame.mixer.Sound('assets/sounds/menu.wav')
     tocar(musica_menu, 0)
 
     clock = pygame.time.Clock()
@@ -536,6 +543,9 @@ def inicio():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sair = True
+                pygame.quit()
+                sys.exit()
+                return 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if rato_no_insert_coin:  # clicou no insert coin
                     clicou_comecar = True
@@ -559,6 +569,7 @@ def inicio():
                             musica_menu.stop()
                     clicou_sound = False
 
+            
         dt = clock.tick(10)
         insert_coin_n += dt/1000 * 4            # mudar de cor 4 vezes por segundo
         if insert_coin_n >= len(insert_coin):
@@ -580,7 +591,7 @@ def inicio():
 
 
 pygame.init()
-musica_fundo = pygame.mixer.Sound('assets/sounds/musica_fundo.mp3')
+musica_fundo = pygame.mixer.Sound('assets/sounds/musica_fundo.wav')
 musica_fundo.set_volume(.5)
 inicio()
 
