@@ -249,8 +249,6 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
 
     # sons
     global som
-    apanhou = pygame.mixer.Sound('assets/sounds/apanhou.wav')
-    perigo = pygame.mixer.Sound('assets/sounds/perigoso.wav')
     clicou_sound = False
 
     perdeu = False
@@ -286,7 +284,7 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
         elif jogador.y > SCREEN_HEIGHT - jogador.height:
             jogador.y = SCREEN_HEIGHT - jogador.height
 
-        dt = clock.tick()               # tempo que passou desde a ultima chamada
+        dt = clock.tick(120)               # tempo que passou desde a ultima chamada
         camara_y += dt * velocidade_y   # mover camara em funcao do tempo
         jogador.y -= dt * velocidade_y  # mover jogador em funcao do tempo
 
@@ -304,6 +302,9 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
         for m in monstros:
             if 0 <= m.y < SCREEN_LINHAS * SQ_SIZE:
                 m.acordado = True  # acorda o monstro e ele começa-se a mexer
+                # Vê se o jogador colide com o monstro
+                if m.colide(jogador.retangulo()):
+                    perdeu = True
                 tocar(perigo, -1)
             elif m.acordado:
                 m.acordado = False
@@ -311,10 +312,6 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
             m.mover(dt, colisao_labirinto,
                     lambda coord: coord_world_to_labirinto(*coord, camara_y, convert_int=False),
                     lambda coord: coord_labirinto_to_world(*coord, camara_y))
-
-            # Vê se o jogador colide com o monstro
-            if m.colide(jogador.retangulo()):
-                perdeu = True
 
         for i, mb in enumerate(make_breaks):
             m_x, m_y, direcao = mb
@@ -333,12 +330,13 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
                     else:
                         m_x -= dt * MAKE_BREAK_VELOCITY
 
-            # ver se jogador o apanha
-            if jogador.retangulo().colliderect(figura_make_break((m_x, m_y))):
-                number_make_break += 3
-                tocar(apanhou)
-                del make_breaks[i]
-            else:
+                # ver se jogador o apanha
+                if jogador.retangulo().colliderect(figura_make_break((m_x, m_y))):
+                    number_make_break += 3
+                    tocar(apanhou)
+                    del make_breaks[i]
+                    mb = None
+            if mb:
                 # guarda as alteracoes feitas, a posicao e a direcao
                 make_breaks[i] = m_x, m_y, direcao
 
@@ -373,10 +371,12 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
 
         # desenhar monstros
         for m in monstros:
-            m.desenhar(screen)
+            if m.acordado:
+                m.desenhar(screen)
 
         # desenhar labirinto
-        for y, linha in enumerate(labirinto):
+        c = int(camara_y//SQ_SIZE)
+        for y, linha in enumerate(labirinto[c:c+SCREEN_LINHAS+2], start=c):
             for x, i in enumerate(linha):
                 if i == '1':
                     # Desenha o quadrado na posicao x, y
@@ -388,7 +388,8 @@ def jogo(cor, coracao, jogador, makebreak_info, velocidade_y, score, vidas, labi
 
         # desenhar make-break
         for mx, my, _ in make_breaks:
-            pygame.draw.rect(screen, WHITE, figura_make_break((mx, my)))
+            if 0 < my < SCREEN_LINHAS * SQ_SIZE:
+                pygame.draw.rect(screen, WHITE, figura_make_break((mx, my)))
 
         # desenhar o jogador
         jogador.desenhar(screen, dt)
@@ -418,14 +419,11 @@ def gameover(screen, score):
     highscore_pos = SCREEN_WIDTH/2-highscore_txt.get_width()/2, pos_go[1] + size_go[1] + 20
 
     clock = pygame.time.Clock()
-    sair = False
-    while i <= score and not sair:
+    while i <= score:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                sair = True
                 pygame.quit()
                 sys.exit()
-                return
 
         screen.fill(BLACK)
         screen.blit(gameover_img, gameover_pos)
@@ -438,13 +436,11 @@ def gameover(screen, score):
         clock.tick(10)
 
     i = 3
-    while i > 0 and not sair:
+    while i > 0:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                sair = True
                 pygame.quit()
                 sys.exit()
-                return
         i -= clock.tick(10)/1000
 
 
@@ -457,10 +453,6 @@ def comecar_jogo(screen, n_make_break_labirinto):
 
     # jogador
     jogador = Player(100, 200, 0.2)
-
-    # sounds
-    die = pygame.mixer.Sound('assets/sounds/die.wav')
-    lost = pygame.mixer.Sound('assets/sounds/lost.wav')
 
     labirinto = criar_labirinto()
     velocidade_y = 0.1
@@ -532,7 +524,6 @@ def inicio():
     titulo = pygame.transform.scale(pygame.image.load("assets/entombed.png"), (500, 100))
     titulo.set_colorkey(WHITE)
 
-    musica_menu = pygame.mixer.Sound('assets/sounds/menu.wav')
     tocar(musica_menu, 0)
 
     clock = pygame.time.Clock()
@@ -542,10 +533,8 @@ def inicio():
         rato_no_sound = sound_rect.collidepoint(*pygame.mouse.get_pos())
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                sair = True
                 pygame.quit()
                 sys.exit()
-                return 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if rato_no_insert_coin:  # clicou no insert coin
                     clicou_comecar = True
@@ -569,7 +558,6 @@ def inicio():
                             musica_menu.stop()
                     clicou_sound = False
 
-            
         dt = clock.tick(10)
         insert_coin_n += dt/1000 * 4            # mudar de cor 4 vezes por segundo
         if insert_coin_n >= len(insert_coin):
@@ -591,8 +579,15 @@ def inicio():
 
 
 pygame.init()
+# sounds
+die = pygame.mixer.Sound('assets/sounds/die.wav')
+lost = pygame.mixer.Sound('assets/sounds/lost.wav')
+musica_menu = pygame.mixer.Sound('assets/sounds/menu.wav')
 musica_fundo = pygame.mixer.Sound('assets/sounds/musica_fundo.wav')
 musica_fundo.set_volume(.5)
+apanhou = pygame.mixer.Sound('assets/sounds/apanhou.wav')
+perigo = pygame.mixer.Sound('assets/sounds/perigoso.wav')
+
 inicio()
 
 pygame.quit()
